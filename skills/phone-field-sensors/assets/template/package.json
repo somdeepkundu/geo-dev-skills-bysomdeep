@@ -1,0 +1,8 @@
+{
+  "name": "field-camera",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Geo-tagged field capture (camera look direction, tilt, footprint). Static site; no build step.",
+  "license": "MIT",
+  "scripts": { "serve": "python3 -m http.server 8765" }
+}
