@@ -13,6 +13,12 @@ exists, because the failures it prevents are quiet.
 | `skills/phone-field-sensors` | Compass and camera heading, tilt, GPS smoothing, footprints, IndexedDB capture, ZIP/CSV/GeoJSON export, Capacitor Android | CropView v3.6, FloodView 1.1 |
 | `skills/geo-temporal-webapp` | Event timelines, "live now", zone-locked clocks, `?demo=` time, georeferencing schematic maps, map explorers, seeded simulations, offline tiles | LitFest Companion 1.0, Mumbai Epidemic Simulator 1.1, Durga Pujo Map, FloodView/CropView explorers |
 
+## Test apps
+
+| App | What it tests | Open on a phone |
+|---|---|---|
+| [`apps/look-check`](apps/look-check/) | Camera look direction and tilt against a landmark you pick on the map | https://somdeepkundu.github.io/geo-dev-skills-bysomdeep/apps/look-check/ |
+
 ## Layout
 
 ```
