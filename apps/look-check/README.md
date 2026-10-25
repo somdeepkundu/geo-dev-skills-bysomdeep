@@ -1,7 +1,8 @@
 # Look Check
 
-A field test for camera look direction and tilt, built only from the
-[phone-field-sensors](../../skills/phone-field-sensors/) skill. It loads `sensor-core.js` and `field-store.js`
+A field test for camera look direction and tilt, built from the
+[phone-field-sensors](../../skills/phone-field-sensors/) skill, with compass trust from
+[phone-sensor-lab](../../skills/phone-sensor-lab/). It loads `sensor-core.js` and `field-store.js`
 straight from the skill folder, so it always tests the skill's current code.
 
 **Open it on a phone:** https://somdeepkundu.github.io/geo-dev-skills-bysomdeep/apps/look-check/
@@ -28,11 +29,15 @@ straight from the skill folder, so it always tests the skill's current code.
   handling); **typical size** is the scatter.
 - **Wobble** above 5° means the phone moved while recording.
 - **Raw sensor data** shows α β γ, iOS compass accuracy and event rates, for bug reports.
+- **COMPASS · CLEAN / DISTURBED** (from the phone-sensor-lab skill): the compass's turn is compared with the
+  gyroscope's. In a metro carriage or beside a car the compass moves while the phone doesn't, and the badge
+  turns red; recorded aims carry `heading_trust`. A fixed offset (the whole field shifted evenly) cannot be seen
+  this way: only the landmark error shows it.
 
 ## Test
 
 ```bash
-python3 apps/look-check/test_look_check.py     # 33 checks with synthetic sensors (Playwright)
+python3 apps/look-check/test_look_check.py     # 38 checks with synthetic sensors (Playwright), including a metro
 ```
 
 No service worker: this is a test page, used online. Readings stay in the browser (localStorage) until exported.

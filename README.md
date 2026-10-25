@@ -1,9 +1,10 @@
 # geo-dev-skills
 
-Two Claude skills for building field and map web apps, distilled from apps that were used in the field or
+Claude skills for building field and map web apps. Two are distilled from apps that were used in the field or
 published on the web: **phone-field-sensors** (GPS, compass, camera look direction, tilt, footprints, offline
 capture, Android) and **geo-temporal-webapp** (maps and time: timelines, playheads, georeferencing, explorers,
-seeded simulations, offline tiles).
+seeded simulations, offline tiles). The third, **phone-sensor-lab**, is experimental: more sensors on top of
+phone-field-sensors, tested with simulated sensors but not yet proven in the field.
 
 Every rule was taken from code that shipped and was corrected by a real failure. Each skill says *why* a rule
 exists, because the failures it prevents are quiet.
@@ -11,13 +12,14 @@ exists, because the failures it prevents are quiet.
 | Skill | Use it for | Distilled from |
 |---|---|---|
 | `skills/phone-field-sensors` | Compass and camera heading, tilt, GPS smoothing, footprints, IndexedDB capture, ZIP/CSV/GeoJSON export, Capacitor Android | CropView v3.6, FloodView 1.1 |
+| `skills/phone-sensor-lab` *(experimental)* | Compass trust (gyroscope vs compass), gravity tilt, stillness, steps and dead reckoning, green cover and sky gap, sound level, external RTK GNSS, Bluetooth sensors and pressure height, AR camera height, NFC plot tags | Built on phone-field-sensors; synthetic tests only |
 | `skills/geo-temporal-webapp` | Event timelines, "live now", zone-locked clocks, `?demo=` time, georeferencing schematic maps, map explorers, seeded simulations, offline tiles | LitFest Companion 1.0, Mumbai Epidemic Simulator 1.1, Durga Pujo Map, FloodView/CropView explorers |
 
 ## Test apps
 
 | App | What it tests | Open on a phone |
 |---|---|---|
-| [`apps/look-check`](apps/look-check/) | Camera look direction and tilt against a landmark you pick on the map | https://somdeepkundu.github.io/geo-dev-skills-bysomdeep/apps/look-check/ |
+| [`apps/look-check`](apps/look-check/) | Camera look direction and tilt against a landmark you pick on the map; flags a magnetically disturbed compass | https://somdeepkundu.github.io/geo-dev-skills-bysomdeep/apps/look-check/ |
 
 ## Layout
 
@@ -48,6 +50,9 @@ python3 skills/geo-temporal-webapp/scripts/test_template.py --app my-app
 | `python3 skills/phone-field-sensors/scripts/test_template.py` | Headless capture app with fake sensors, export and share (39+ checks) |
 | `python3 skills/phone-field-sensors/scripts/test_native_bridge.py` | Android download bridge with a mocked Capacitor (4 checks) |
 | `python3 skills/phone-field-sensors/scripts/check_export_zip.py <export.zip>` | Flags altitude-as-height, lost-signal headings and other export mistakes |
+| `node skills/phone-sensor-lab/scripts/test_sensor_lab.mjs` | Compass trust, gravity tilt, steps, cover, NMEA, decoders (58 checks) |
+| `python3 skills/phone-sensor-lab/scripts/test_template.py` | Headless Sensor Lab with a simulated phone, including a metro (27 checks) |
+| `python3 apps/look-check/test_look_check.py` | Look Check with simulated Android and iOS sensors and a metro (38 checks) |
 | `node skills/geo-temporal-webapp/scripts/test_libs.mjs` | Time, georeferencing and explorer helpers (50 checks) |
 | `python3 skills/geo-temporal-webapp/scripts/test_template.py` | Headless timeline app: states, playhead, escaping, CSP, phone width (16 checks) |
 
