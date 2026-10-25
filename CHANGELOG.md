@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.0 — 2026-10-25
+
+### phone-sensor-lab 0.1.0 (new, experimental)
+- Compass trust: gyroscope turn vs compass turn over 2 s flags magnetic disturbance (metro, vehicles, rebar).
+- Gravity tilt as a second opinion, with the vector's sign learned from still moments, never assumed.
+- Stillness gate; step detection and pedestrian dead reckoning nudged by good GPS fixes.
+- Green cover (ExG + Otsu) and sky gap from camera frames; relative sound level with a silent-input fallback.
+- NMEA parser with checksums for external RTK receivers over Web Serial; Bluetooth environmental-sensing
+  decoders and barometric height differences; WebXR camera height; NFC plot tags (the last two untested).
+- Tests: 58 Node checks, 27 headless app checks. Not yet field-proven.
+
+### apps
+- Look Check 1.0: aim at a landmark, compare camera direction with the true bearing; tilt checks; CSV export.
+- Look Check 1.1: badge shows COMPASS · CLEAN / DISTURBED from phone-sensor-lab; `heading_trust` in exports.
+
 ## 1.0.0 — 2026-10-25
 
 First release. Two skills, each with a starter template, tests and a reference set.

@@ -1,22 +1,25 @@
 /* Look Check — a field test of camera look direction and tilt.
  * Built only from the phone-field-sensors skill: sensor-core.js (compass engine, cameraHeading,
  * tilt, GPS smoothing, geo maths, CSV guard) and field-store.js (download), loaded straight from
- * the skill folder, so this page always tests the skill's current code.
+ * the skill folder, so this page always tests the skill's current code. Compass trust (gyroscope vs
+ * compass, to flag magnetic disturbance) comes from phone-sensor-lab's sensor-lab.js.
  * Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT License */
 (function () {
   'use strict';
-  const APP = { name: 'Look Check', version: '1.0.0', logKey: 'look-check-log-v1' };
+  const APP = { name: 'Look Check', version: '1.1.0', logKey: 'look-check-log-v1' };
   const OSM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   const SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
   const WINDOW_MS = 1000;        // a recording averages this much of the latest readings
   const NEAR_M = 50;             // closer than this, GPS error swamps the true bearing
-  const F = window.FieldSensors, FS = window.FieldStore;
+  const F = window.FieldSensors, FS = window.FieldStore, LAB = window.SensorLab;
   const $ = id => document.getElementById(id);
 
   const S = { fix: null, target: null, map: null, tile: null, sat: true, centred: false, layers: {}, log: [], samples: [], raw: {} };
   const gps = F.createGpsSmoother(6);
+  const watch = LAB.createMagWatch();            // CLEAN | DISTURBED | UNKNOWN
+  let trust = { status: 'UNKNOWN', mismatch: null };
   const compass = F.createCompass({
-    onChange: st => { if (st.heading !== null) S.samples.push({ t: Date.now(), h: st.heading, tilt: st.tilt }); },
+    onChange: st => { if (st.heading !== null) { S.samples.push({ t: Date.now(), h: st.heading, tilt: st.tilt }); watch.feedHeading(performance.now(), st.heading); } },
     onWarn: w => toast(w === 'denied'
       ? 'Motion sensors are blocked. Allow them in the site settings, then tap Recalibrate.'
       : 'No compass data from this phone yet. Tap Recalibrate and move the phone.', 'err')
@@ -56,7 +59,7 @@
       mark('ori'); S.raw.ori = { a: e.alpha, b: e.beta, g: e.gamma, absolute: e.absolute };
       if (e.webkitCompassHeading !== undefined) S.raw.ios = { h: e.webkitCompassHeading, acc: e.webkitCompassAccuracy };
     }, true);
-    addEventListener('devicemotion', () => mark('mot'), true);
+    addEventListener('devicemotion', e => { mark('mot'); watch.feedMotion(performance.now(), e.rotationRate, e.accelerationIncludingGravity); }, true);
   }
 
   /* ── Averaging: circular mean of the last second, and how far it wobbled ── */
@@ -98,7 +101,10 @@
   function chip(id, text, cls) { const e = $(id); e.textContent = text; e.className = 'chip' + (cls ? ' ' + cls : ''); }
   function render() {
     const h = C.heading, t = C.tilt, g = S.fix, sigCls = C.signal === 'OK' ? 'ok' : C.signal === 'STALE' ? 'warn' : 'bad';
-    $('src').textContent = C.src; $('src').className = 'badge ' + sigCls;
+    trust = watch.evaluate(performance.now());
+    const live = C.signal !== 'LOST' && h !== null, disturbed = live && trust.status === 'DISTURBED';
+    $('src').textContent = C.src + (live && trust.status !== 'UNKNOWN' ? ' · ' + trust.status : '');
+    $('src').className = 'badge ' + (disturbed ? 'bad' : sigCls);
     $('hdg').textContent = h === null ? '—' : String(Math.round(h)).padStart(3, '0') + '°';
     $('hdgCard').textContent = h === null ? 'waiting for compass' : card(h) + ' · clockwise from true north';
     $('tilt').textContent = t === null ? '—' : Math.round(t) + '°';
@@ -119,7 +125,7 @@
       const er = e === null ? null : Math.round(e) || 0;      // `|| 0` turns −0 into 0
       $('tErr').textContent = er === null ? '—' : (er > 0 ? '+' : '') + er + '°';
       $('tErr').className = ae === null ? '' : ae <= 5 ? 'ok' : ae <= 15 ? 'warn' : 'bad';
-      $('tSide').textContent = e === null ? '' : ae < 1 ? 'on target' : e > 0 ? 'compass reads right of true' : 'compass reads left of true';
+      $('tSide').textContent = e === null ? '' : disturbed ? 'compass disturbed here: magnetic field is bent' : ae < 1 ? 'on target' : e > 0 ? 'compass reads right of true' : 'compass reads left of true';
     }
     $('recBtn').disabled = !(ti && h !== null);
     updMap(ti);
@@ -133,6 +139,7 @@
       row('iOS compass', r.ios ? `${fmt(r.ios.h, 1)}° (accuracy ${fmt(r.ios.acc)}°)` : 'not sent'),
       row('events per second', `absolute ${rate.abs.length} · orientation ${rate.ori.length} · motion ${rate.mot.length}`),
       row('engine', `abs ${C.absCount} · ori ${C.oriCount} · resyncs ${C.resyncs} · low confidence ${C.lowConfidence}`),
+      row('compass vs gyroscope', trust.mismatch === null ? 'needs motion data with rotation rate' : `${trust.status} · compass ${fmt(trust.compassDelta, 1)}°, gyroscope ${fmt(trust.gyroDelta, 1)}° in 2 s`),
       row('position', S.fix ? `${S.fix.lat.toFixed(6)}, ${S.fix.lon.toFixed(6)} (${S.fix.samples} fixes)` : 'none')
     ].join('');
   }
@@ -179,7 +186,7 @@
   function base() {
     const g = S.fix;
     return { time: new Date().toISOString(), lat: g ? g.lat : null, lon: g ? g.lon : null, gps_acc_m: g ? g.acc : null,
-             heading_source: C.src, platform: C.platform, permission: C.perm,
+             heading_source: C.src, heading_trust: trust.status.toLowerCase(), platform: C.platform, permission: C.perm,
              alpha: S.raw.abs ? S.raw.abs.a : S.raw.ori ? S.raw.ori.a : null,
              beta: S.raw.ori ? S.raw.ori.b : null, gamma: S.raw.ori ? S.raw.ori.g : null,
              ios_heading: S.raw.ios ? S.raw.ios.h : null, ios_accuracy: S.raw.ios ? S.raw.ios.acc : null };
@@ -191,7 +198,7 @@
     add(Object.assign(base(), { kind: 'aim', heading_deg: a.h, heading_spread_deg: a.spread, samples: a.n,
       target_lat: S.target.lat, target_lon: S.target.lon, target_bearing_deg: ti.brg, target_bearing_unc_deg: ti.unc,
       distance_m: ti.dist, error_deg: e, tilt_deg: a.tilt }));
-    toast(`Recorded: error ${e > 0 ? '+' : ''}${e.toFixed(1)}°` + (a.spread > 5 ? ' (the phone moved; hold steadier)' : ''), Math.abs(e) <= 5 ? 'ok' : '');
+    toast(`Recorded: error ${e > 0 ? '+' : ''}${e.toFixed(1)}°` + (trust.status === 'DISTURBED' ? ' (compass disturbed here)' : a.spread > 5 ? ' (the phone moved; hold steadier)' : ''), Math.abs(e) <= 5 && trust.status !== 'DISTURBED' ? 'ok' : '');
   });
   function tiltCheck(expected) {
     const a = averaged();
@@ -220,7 +227,7 @@
       if (r.kind === 'aim') {
         const ae = Math.abs(r.error_deg), cls = ae <= 5 ? 'ok' : ae <= 15 ? 'warn' : 'bad';
         return `<li><span class="when">${F.esc(when)}</span> Aim <b class="${cls}">${r.error_deg > 0 ? '+' : ''}${fmt(r.error_deg, 1)}°</b>
-          <small>read ${fmt(r.heading_deg)}° · true ${fmt(r.target_bearing_deg)}° ± ${fmt(r.target_bearing_unc_deg, 1)}° · ${fmt(r.distance_m)} m · wobble ${fmt(r.heading_spread_deg, 1)}° · ${F.esc(r.platform)}</small></li>`;
+          <small>read ${fmt(r.heading_deg)}° · true ${fmt(r.target_bearing_deg)}° ± ${fmt(r.target_bearing_unc_deg, 1)}° · ${fmt(r.distance_m)} m · wobble ${fmt(r.heading_spread_deg, 1)}° · ${F.esc(r.platform)}${r.heading_trust === 'disturbed' ? ' · <b class="bad">compass disturbed</b>' : ''}</small></li>`;
       }
       const te = Math.abs(r.tilt_error_deg), cls = te <= 3 ? 'ok' : te <= 8 ? 'warn' : 'bad';
       return `<li><span class="when">${F.esc(when)}</span> Tilt <b class="${cls}">${fmt(r.tilt_deg, 1)}°</b>
@@ -229,7 +236,7 @@
   }
   const COLS = ['time', 'kind', 'heading_deg', 'heading_spread_deg', 'samples', 'target_bearing_deg', 'target_bearing_unc_deg', 'error_deg',
     'distance_m', 'tilt_deg', 'tilt_expected_deg', 'tilt_error_deg', 'lat', 'lon', 'gps_acc_m', 'target_lat', 'target_lon',
-    'heading_source', 'platform', 'permission', 'alpha', 'beta', 'gamma', 'ios_heading', 'ios_accuracy'];
+    'heading_source', 'heading_trust', 'platform', 'permission', 'alpha', 'beta', 'gamma', 'ios_heading', 'ios_accuracy'];
   function csv() {
     const round = v => typeof v === 'number' ? +v.toFixed(7) : v;
     return [COLS.join(','), ...[...S.log].reverse().map(r => COLS.map(k => F.csvCell(round(r[k]))).join(','))].join('\n');
@@ -249,5 +256,5 @@
 
   $('ver').textContent = APP.version;
   load(); renderLog();
-  window.__look = { S, C, compass, csv, averaged, targetInfo, signed, APP };   // for tests and the console
+  window.__look = { S, C, compass, watch, csv, averaged, targetInfo, signed, APP };   // for tests and the console
 })();

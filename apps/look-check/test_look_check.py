@@ -3,6 +3,8 @@
 
     python3 apps/look-check/test_look_check.py
 
+Also checks compass trust from phone-sensor-lab: CLEAN when still, DISTURBED when the compass drifts while the gyroscope says the phone is not turning (a metro carriage).
+
 Serves the repository root, because the app loads sensor-core.js and field-store.js from the skill folder.
 Checks: permission asked inside the tap; heading and tilt from a known pose; a map tap sets the target and the
 true bearing; recorded error is 0 when aimed at the target and +10 when turned 10° right; the gimbal-lock twin
@@ -140,6 +142,26 @@ with sync_playwright() as p:
     settle(pg, 900)
     check('iOS: uses webkitCompassHeading as is', txt(pg, '#hdg') == '123°', txt(pg, '#hdg'))
     check('iOS: platform ios', 'ios' in txt(pg, '#plat'), txt(pg, '#plat'))
+    ctx.close()
+
+    # Metro: the compass drifts 12°/s while the gyroscope says the phone is not turning (phone-sensor-lab)
+    METRO = """(o => { clearInterval(window.__oriTimer); const G = 9.80665, D = Math.PI / 180; window.__m = o; let a = o.alpha;
+      window.__oriTimer = setInterval(() => { a -= window.__m.drift * 0.02;
+        window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', {alpha: ((a % 360) + 360) % 360, beta: o.beta, gamma: 0, absolute: true}));
+        window.dispatchEvent(new DeviceMotionEvent('devicemotion', {accelerationIncludingGravity: {x: 0, y: G * Math.sin(o.beta * D), z: G * Math.cos(o.beta * D)}, rotationRate: {alpha: 0, beta: 0, gamma: 0}, interval: 20}));
+      }, 20); })"""
+    ctx, pg = phone(b)
+    pg.goto(URL); pg.click('#startBtn')
+    pg.evaluate(METRO + '({alpha: 270, beta: 70, drift: 0})'); settle(pg, 2800)
+    check('still phone, steady compass → COMPASS · CLEAN', txt(pg, '#src') == 'COMPASS · CLEAN', txt(pg, '#src'))
+    pg.evaluate('window.__m.drift = 12'); settle(pg, 2600)
+    check('metro: compass drifts, phone still → COMPASS · DISTURBED (red)', txt(pg, '#src') == 'COMPASS · DISTURBED' and 'bad' in pg.get_attribute('#src', 'class'), txt(pg, '#src'))
+    pg.evaluate(f"__look.S.target = {{lat: {EAST_200M[0]}, lon: {EAST_200M[1]}}}"); pg.wait_for_timeout(300)
+    check('error line says the compass is disturbed', 'disturbed' in txt(pg, '#tSide'), txt(pg, '#tSide'))
+    pg.click('#recBtn'); pg.wait_for_timeout(200)
+    check('recorded aim carries heading_trust = disturbed', pg.evaluate('__look.S.log[0].heading_trust') == 'disturbed')
+    check('CSV has a heading_trust column', 'heading_trust' in pg.evaluate('__look.csv()').split('\n')[0])
+    pg.screenshot(path=OUT + '/04_metro.png', full_page=False)
     ctx.close()
 
     # No sensor data at all: heading must stay "—", never 0 / north (rule 2)

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org https://server.arcgisonline.com; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; font-src 'self'">
+<meta name="theme-color" content="#f4f1ea">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="style.css">
+<title>Sensor Lab</title>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Sensor Lab</h1>
+    <p class="sub">What else the phone can measure, and how far to trust it.</p>
+  </div>
+  <span class="badge" id="labVer"></span>
+</header>
+
+<section class="card" aria-labelledby="h-caps">
+  <h2 id="h-caps">This phone and browser</h2>
+  <ul class="caps" id="caps"></ul>
+  <p class="fine">Detected from what the browser offers, not from its name. "Flag" means Chrome hides it behind chrome://flags.</p>
+</section>
+
+<section class="card" aria-labelledby="h-trust">
+  <div class="card-head"><h2 id="h-trust">Compass trust</h2><span class="badge" id="magBadge">not started</span></div>
+  <p class="lead">The compass is magnetic; the gyroscope is not. When the compass turns but the gyroscope says the phone didn't, something nearby is bending the field.</p>
+  <button type="button" class="btn primary" id="motionBtn">Start motion sensors</button>
+  <dl class="kv" id="trustKv" hidden>
+    <dt>Camera direction</dt><dd id="kHdg">—</dd>
+    <dt>Compass vs gyroscope</dt><dd id="kMis">—</dd>
+    <dt>Tilt (orientation)</dt><dd id="kTiltO">—</dd>
+    <dt>Tilt (gravity)</dt><dd id="kTiltG">—</dd>
+    <dt>Held still</dt><dd id="kStill">—</dd>
+    <dt>Field strength</dt><dd id="kField">—</dd>
+  </dl>
+  <p class="fine" id="trustHint" hidden>Try it: keep the phone pointing one way and slide it toward a car, a pole or a laptop.</p>
+</section>
+
+<section class="card" aria-labelledby="h-walk">
+  <div class="card-head"><h2 id="h-walk">Steps and track</h2><span class="badge" id="walkBadge">idle</span></div>
+  <p class="lead">Counts steps from the accelerometer and draws a track from steps and compass, so the line continues where GPS drops out. Hold the phone in front of you, pointing where you walk.</p>
+  <div class="row">
+    <button type="button" class="btn primary" id="walkBtn" disabled>Start walk</button>
+    <label class="inline">Step factor K <input type="number" id="kInput" value="0.48" min="0.2" max="0.8" step="0.01" inputmode="decimal"></label>
+  </div>
+  <div class="stats"><div><b id="steps">0</b><small>steps</small></div><div><b id="dist">0 m</b><small>walked</small></div><div><b id="gpsGap">—</b><small>track vs GPS</small></div></div>
+  <div id="map" role="region" aria-label="Map of the walked track"></div>
+  <p class="fine">Calibrate K: walk a measured 20 m, then K × (20 ÷ distance shown).</p>
+</section>
+
+<section class="card" aria-labelledby="h-cam">
+  <div class="card-head"><h2 id="h-cam">Green cover and sky</h2><span class="badge" id="camBadge">off</span></div>
+  <p class="lead">Point down at a crop for green cover, or up through a tree for the sky gap. Each frame is split into classes on the phone; nothing is uploaded.</p>
+  <div class="row">
+    <button type="button" class="btn primary" id="camBtn">Start camera</button>
+    <div class="seg" role="group" aria-label="Measure">
+      <button type="button" class="seg-b on" data-mode="green" aria-pressed="true">Green cover</button>
+      <button type="button" class="seg-b" data-mode="sky" aria-pressed="false">Sky gap</button>
+    </div>
+  </div>
+  <div class="cam-row">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="mask" width="160" height="120" aria-label="Classified pixels"></canvas>
+  </div>
+  <div class="stats"><div><b id="camPct">—</b><small id="camWhat">green cover</small></div><div><b id="camThr">—</b><small>threshold</small></div><button type="button" class="btn" id="camRec" disabled>Record</button></div>
+</section>
+
+<section class="card" aria-labelledby="h-snd">
+  <div class="card-head"><h2 id="h-snd">Sound level</h2><span class="badge" id="sndBadge">off</span></div>
+  <p class="lead">Relative loudness in dBFS (0 = the loudest this phone records). Compare places with the same phone; it is not a calibrated sound meter.</p>
+  <div class="row"><button type="button" class="btn primary" id="sndBtn">Start microphone</button><button type="button" class="btn" id="sndRec" disabled>Record</button></div>
+  <div class="meter" aria-hidden="true"><i id="sndBar"></i></div>
+  <div class="stats"><div><b id="sndNow">—</b><small>now</small></div><div><b id="sndMin">—</b><small>quietest</small></div><div><b id="sndMax">—</b><small>loudest</small></div></div>
+</section>
+
+<section class="card" aria-labelledby="h-gnss">
+  <div class="card-head"><h2 id="h-gnss">External GNSS</h2><span class="badge" id="gnssBadge">none</span></div>
+  <p class="lead">A survey or RTK receiver over USB or Bluetooth serial gives centimetres where the phone gives metres. Paste NMEA to test without one.</p>
+  <div class="row">
+    <button type="button" class="btn primary" id="serialBtn">Connect receiver</button>
+    <label class="inline">Baud <select id="baud"><option>9600</option><option>38400</option><option selected>115200</option></select></label>
+  </div>
+  <details><summary>Paste NMEA</summary>
+    <textarea id="nmeaIn" rows="4" spellcheck="false" placeholder="$GNGGA,…*hh"></textarea>
+    <button type="button" class="btn small" id="nmeaBtn">Read</button>
+  </details>
+  <dl class="kv" id="gnssKv"></dl>
+</section>
+
+<section class="card" aria-labelledby="h-ble">
+  <div class="card-head"><h2 id="h-ble">Bluetooth sensor</h2><span class="badge" id="bleBadge">none</span></div>
+  <p class="lead">Temperature, humidity and pressure from a sensor that speaks the standard Environmental Sensing service. Pressure gives height differences: about 8 m per hPa.</p>
+  <div class="row"><button type="button" class="btn primary" id="bleBtn">Connect sensor</button><button type="button" class="btn" id="refBtn" disabled>Set height reference here</button></div>
+  <dl class="kv" id="bleKv"></dl>
+</section>
+
+<section class="card" aria-labelledby="h-ar">
+  <div class="card-head"><h2 id="h-ar">Camera height (AR)</h2><span class="badge" id="arBadge">checking</span></div>
+  <p class="lead">Measures how high the camera is above the ground, for footprints, instead of guessing. Aim at the ground and tap.</p>
+  <button type="button" class="btn primary" id="arBtn" disabled>Measure height</button>
+  <p class="fine" id="arMsg"></p>
+  <div id="arOverlay" class="ar-overlay" hidden><b id="arNow">aim at the ground</b><button type="button" class="btn" id="arEnd">Done</button></div>
+</section>
+
+<section class="card" aria-labelledby="h-nfc">
+  <div class="card-head"><h2 id="h-nfc">NFC point tags</h2><span class="badge" id="nfcBadge">checking</span></div>
+  <p class="lead">Stick a cheap NFC tag on a plot post. Write the point once; on every revisit, a tap logs it with today's GPS and how far that is from the original.</p>
+  <div class="row"><input type="text" id="nfcLabel" placeholder="Plot name" maxlength="40"><button type="button" class="btn" id="nfcWrite" disabled>Write tag</button><button type="button" class="btn primary" id="nfcScan" disabled>Scan tags</button></div>
+</section>
+
+<section class="card" aria-labelledby="h-log">
+  <div class="card-head"><h2 id="h-log">Readings</h2>
+    <div><button type="button" class="btn small" id="csvBtn">CSV</button> <button type="button" class="btn small" id="gjBtn">Track GeoJSON</button></div></div>
+  <ol class="log" id="log"><li class="empty">Nothing recorded yet.</li></ol>
+</section>
+
+<footer class="foot">Sensor Lab · phone-sensor-lab skill (experimental) on phone-field-sensors · Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="sensor-core.js"></script>
+<script src="field-store.js"></script>
+<script src="sensor-lab.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
