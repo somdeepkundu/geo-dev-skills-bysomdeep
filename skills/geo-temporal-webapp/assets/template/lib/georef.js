@@ -6,6 +6,7 @@
  *
  *   const fit = Georef.fit([{id, lat, lon, map:[x, y]}, …], {centre:[lat, lon]});
  *   fit.toMap(lat, lon) → [x, y];  fit.err (mean m), fit.max, fit.worst (id), fit.res {id: m}, fit.mpu (m per map unit)
+ *   fit.worstLoo (id of the point to re-check: leave-one-out, 3+ points), fit.loo {id: m}
  *
  * Local coordinates are metres EAST and SOUTH of the centre — the same handedness as an SVG with
  * y pointing down — so no mirror is needed (a similarity can rotate and scale, but cannot mirror).
@@ -60,7 +61,7 @@
   }
   const apply = (f, z) => [f.m[0] * z[0] + f.m[1] * z[1] + f.m[2], f.m[3] * z[0] + f.m[4] * z[1] + f.m[5]];
 
-  function fit(points, { centre } = {}) {
+  function fit(points, { centre, loo = true } = {}) {
     if (!points || points.length < 2) return null;
     const c = centre || [points.reduce((s, p) => s + p.lat, 0) / points.length, points.reduce((s, p) => s + p.lon, 0) / points.length];
     const zs = points.map(p => toLocal(p.lat, p.lon, c)), ws = points.map(p => p.map);
@@ -73,6 +74,18 @@
       f.res[p.id ?? i] = r; f.err += r / points.length;
       if (r > f.max) { f.max = r; f.worst = p.id ?? i; }
     });
+    /* Leave-one-out: refit without each point and measure how well the rest predict it. A single bad
+       point spreads its error over every residual, so the largest residual can name an innocent point;
+       the largest leave-one-out error names the bad one. Needs 3+ points. */
+    if (loo && points.length >= 3) {
+      f.loo = {}; f.worstLoo = null; let worst = -1;
+      points.forEach((p, i) => {
+        const g = fit(points.filter((_, j) => j !== i), { centre: c, loo: false });
+        const e = g ? Math.hypot(...apply(g, zs[i]).map((v, k) => v - ws[i][k])) * g.mpu : null;
+        f.loo[p.id ?? i] = e;
+        if (e !== null && e > worst) { worst = e; f.worstLoo = p.id ?? i; }
+      });
+    }
     f.centre = c;
     f.toMap = (lat, lon) => apply(f, toLocal(lat, lon, c));
     return f;

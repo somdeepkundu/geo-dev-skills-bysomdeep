@@ -1,0 +1,14 @@
+{
+  "event": "Harbour Day (sample)",
+  "timeZone": "Asia/Kolkata",
+  "date": "2026-10-25",
+  "window": { "start": "09:00", "end": "18:00" },
+  "items": [
+    { "id": "stall-01", "title": "Fish market tour", "kind": "walk",  "place": [18.9432, 72.8382], "start": "09:30", "end": "10:15" },
+    { "id": "stall-02", "title": "Boat safety talk", "kind": "talk",  "place": [18.9447, 72.8360], "start": "10:00", "end": "11:00" },
+    { "id": "stall-03", "title": "Mangrove walk",    "kind": "walk",  "place": [18.9486, 72.8301], "start": "11:30", "end": "13:00" },
+    { "id": "stall-04", "title": "Lunch and music",  "kind": "food",  "place": [18.9458, 72.8349], "start": "13:00", "end": "14:30" },
+    { "id": "stall-05", "title": "Water quality demo", "kind": "talk", "place": [18.9420, 72.8402], "start": "14:45", "end": "15:30" },
+    { "id": "stall-06", "title": "Sunset panel",     "kind": "talk",  "place": [18.9400, 72.8390], "start": "16:30", "end": "17:30" }
+  ]
+}
