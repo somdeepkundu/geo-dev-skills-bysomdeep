@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org https://server.arcgisonline.com; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; font-src 'self'">
+<meta name="theme-color" content="#f4f1ea">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="style.css">
+<title>Look Check</title>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Look Check</h1>
+    <p class="sub">Is the camera direction and tilt right? Aim at a landmark and see.</p>
+  </div>
+  <span class="badge" id="src">not started</span>
+</header>
+
+<section class="card start" id="startCard">
+  <p>This page reads the phone's compass, tilt and GPS with the <b>phone-field-sensors</b> skill, then compares the
+     camera direction with the true bearing to a landmark you pick on the map.</p>
+  <ol>
+    <li>Tap <b>Start sensors</b> and allow motion, location and camera.</li>
+    <li>Tap a far landmark on the map (a tower, a building corner, a tree line), ideally 100&nbsp;m or more away.</li>
+    <li>Point the camera at it, hold still, tap <b>Record aim</b>. Repeat from a few spots.</li>
+  </ol>
+  <button type="button" class="btn primary" id="startBtn">Start sensors</button>
+  <p class="fine">Nothing leaves the phone. Readings stay in this browser until you export them.</p>
+</section>
+
+<main id="main" hidden>
+  <section class="card dial" aria-label="Live readings">
+    <div class="read">
+      <span class="lbl">Camera direction</span>
+      <span class="big" id="hdg">—</span>
+      <span class="unit" id="hdgCard">&nbsp;</span>
+    </div>
+    <div class="read">
+      <span class="lbl">Tilt</span>
+      <span class="big" id="tilt">—</span>
+      <span class="unit" id="tiltWord">&nbsp;</span>
+    </div>
+    <div class="chips">
+      <span class="chip" id="plat">platform —</span>
+      <span class="chip" id="perm">permission —</span>
+      <span class="chip" id="gps">GPS —</span>
+    </div>
+  </section>
+
+  <section class="card cam" aria-label="Camera">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="cross" aria-hidden="true"></div>
+    <p class="cam-msg" id="camMsg">Camera off</p>
+  </section>
+
+  <section class="card target" aria-label="Target">
+    <div class="map-wrap">
+      <div id="map" role="region" aria-label="Map: tap to set the target"></div>
+      <div class="map-btns">
+        <button type="button" class="btn small" id="layerBtn" aria-pressed="true">Imagery</button>
+        <button type="button" class="btn small" id="centreBtn">Me</button>
+      </div>
+    </div>
+    <div class="cmp" id="cmp">
+      <p class="cmp-empty" id="cmpEmpty">Tap a landmark on the map to set the target.</p>
+      <div class="cmp-grid" id="cmpGrid" hidden>
+        <div><span class="lbl">True bearing</span><b id="tBrg">—</b><small id="tUnc">&nbsp;</small></div>
+        <div><span class="lbl">Distance</span><b id="tDist">—</b><small id="tWarn">&nbsp;</small></div>
+        <div class="err"><span class="lbl">Compass error</span><b id="tErr">—</b><small id="tSide">&nbsp;</small></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn primary" id="recBtn" disabled>Record aim</button>
+      <button type="button" class="btn" id="flatBtn">Flat on table (0°)</button>
+      <button type="button" class="btn" id="upBtn">Upright (90°)</button>
+    </div>
+    <p class="fine" id="recHint">Recording takes the average of the last second and notes how much it wobbled.</p>
+  </section>
+
+  <section class="card" aria-label="Log">
+    <div class="log-head">
+      <h2>Readings</h2>
+      <div>
+        <button type="button" class="btn small" id="csvBtn">Export CSV</button>
+        <button type="button" class="btn small ghost" id="clearBtn">Clear</button>
+      </div>
+    </div>
+    <p class="summary" id="summary">No readings yet.</p>
+    <ol class="log" id="log"></ol>
+  </section>
+
+  <section class="card" aria-label="Raw sensor data">
+    <details>
+      <summary>Raw sensor data</summary>
+      <dl class="kv" id="raw"></dl>
+    </details>
+    <button type="button" class="btn small" id="recalBtn">Recalibrate compass</button>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Look Check <span id="ver"></span> · built only from the phone-field-sensors skill ·
+  Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT</span>
+</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="../../skills/phone-field-sensors/assets/template/sensor-core.js"></script>
+<script src="../../skills/phone-field-sensors/assets/template/field-store.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
