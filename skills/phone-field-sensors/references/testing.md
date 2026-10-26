@@ -12,6 +12,12 @@ and this skill's `scripts/test_template.py` and `scripts/test_sensor_core.mjs`.
    denied, no data, visibility resync. Runs in under a second; run it on every change.
 2. **End-to-end in headless Chromium** (`test_template.py`, Playwright for Python): the real page, real
    IndexedDB, real service worker, real downloads.
+3. **Video and camera** (`test_video_camera.py`): fake camera *and microphone*, every class reachable at
+   412 and 360 px, a 6 s clip with a mid-clip mark (rows on time within 0.3 s), playback, ZIP contents
+   (video, `.srt`, track GeoJSON, per-second CSV), the ↻ button, an ended track (`track.stop()`), a frozen
+   preview (`srcObject = canvas.captureStream(0)`), restart and page-hidden while filming, and crash
+   recovery (navigate away mid-clip, reopen, resume). Grant `microphone` in the context. Guard init
+   scripts with `typeof DeviceOrientationEvent` so they don't throw on `about:blank`.
 
 ## Playwright setup that works
 

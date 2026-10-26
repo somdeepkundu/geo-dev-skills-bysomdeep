@@ -11,7 +11,7 @@ exists, because the failures it prevents are quiet.
 
 | Skill | Use it for | Distilled from |
 |---|---|---|
-| `skills/phone-field-sensors` | Compass and camera heading, tilt, GPS smoothing, footprints, IndexedDB capture, ZIP/CSV/GeoJSON export, Capacitor Android | CropView v3.6, FloodView 1.1 |
+| `skills/phone-field-sensors` | Compass and camera heading, tilt, GPS smoothing, footprints, IndexedDB capture, video with a 1 s sensor log, camera freeze recovery, ZIP/CSV/GeoJSON/SRT export, Capacitor Android | CropView v3.6, FloodView 1.1, Powai Lake Survey 1.1 |
 | `skills/phone-sensor-lab` *(experimental)* | Compass trust (gyroscope vs compass), gravity tilt, stillness, steps and dead reckoning, green cover and sky gap, sound level, external RTK GNSS, Bluetooth sensors and pressure height, AR camera height, NFC plot tags | Built on phone-field-sensors; synthetic tests only |
 | `skills/geo-temporal-webapp` | Event timelines, "live now", zone-locked clocks, `?demo=` time, georeferencing schematic maps, map explorers, seeded simulations, offline tiles | LitFest Companion 1.0, Mumbai Epidemic Simulator 1.1, Durga Pujo Map, FloodView/CropView explorers |
 
@@ -47,7 +47,8 @@ python3 skills/geo-temporal-webapp/scripts/test_template.py --app my-app
 | Command | What it checks |
 |---|---|
 | `node skills/phone-field-sensors/scripts/test_sensor_core.mjs` | Heading and tilt maths, gimbal-lock twins, compass engine states (58 checks) |
-| `python3 skills/phone-field-sensors/scripts/test_template.py` | Headless capture app with fake sensors, export and share (39+ checks) |
+| `python3 skills/phone-field-sensors/scripts/test_template.py` | Headless capture app with fake sensors, export and share (41 checks) |
+| `python3 skills/phone-field-sensors/scripts/test_video_camera.py` | Type grid on small screens, video with the 1 s log, export, camera restart and watchdog, crash recovery (28 checks) |
 | `python3 skills/phone-field-sensors/scripts/test_native_bridge.py` | Android download bridge with a mocked Capacitor (4 checks) |
 | `python3 skills/phone-field-sensors/scripts/check_export_zip.py <export.zip>` | Flags altitude-as-height, lost-signal headings and other export mistakes |
 | `node skills/phone-sensor-lab/scripts/test_sensor_lab.mjs` | Compass trust, gravity tilt, steps, cover, NMEA, decoders (58 checks) |

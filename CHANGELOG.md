@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0 — 2026-10-26
+
+### phone-field-sensors 1.1.0
+From Powai Lake Survey (a shoot-scouting app built from the template), after its first night out.
+- Fix: classes were one `flex: 1` row; with seven classes four were off-screen and could not be swiped to.
+  Now a grid of `min(4, n)` columns with a Photo/Video switch and one shutter; the picked type stays lit.
+- Video: `MediaRecorder` with a self-correcting once-a-second log of position, heading, tilt, footprint and
+  aim point; tap a type mid-clip to mark it. WebM first (Chromium's MP4 recorder held 8 s back), pieces
+  written to IndexedDB every 3 s and recovered after a crash. Export adds the clip, a `.srt`, a track
+  GeoJSON and a per-second CSV; clips play in the app with the log under them.
+- Camera: always-visible ↻ restart button and a watchdog for a frozen or ended preview; a running clip is
+  saved first.
+- Service worker update: reload on `controllerchange` when no survey is open.
+- New `references/video-camera.md`, `scripts/test_video_camera.py` (28 checks); `test_template.py` updated
+  for the new controls (41 checks).
+
 ## 1.1.0 — 2026-10-25
 
 ### phone-sensor-lab 0.1.0 (new, experimental)

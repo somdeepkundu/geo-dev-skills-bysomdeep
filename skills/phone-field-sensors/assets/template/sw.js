@@ -5,7 +5,7 @@
      so a map browsed before going out still shows offline.
    Bump VERSION whenever any cached file changes (keep it equal to app.js APP.version
    and package.json "version"). */
-const VERSION = 'field-camera-1.0.0';
+const VERSION = 'field-camera-1.1.0';
 const TILE_CACHE = 'field-camera-tiles';
 const TILE_MAX = 3000;
 const SHELL = [

@@ -1,6 +1,6 @@
 {
   "name": "field-camera",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Geo-tagged field capture (camera look direction, tilt, footprint). Static site; no build step.",
   "license": "MIT",

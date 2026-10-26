@@ -1,14 +1,15 @@
 ---
 name: phone-field-sensors
-description: Build phone web apps (PWA or Capacitor) that read GPS position, compass heading, camera look direction and tilt from the browser's DeviceOrientation and Geolocation APIs, for field data capture, geotagged photos with direction, ground-truth surveys, compass beams on maps, crosshair aim points and camera ground footprints. Distilled from CropView and FloodView, field-tested on Android Chrome and iOS Safari. Use it whenever a task touches deviceorientation, deviceorientationabsolute, webkitCompassHeading, alpha/beta/gamma, compass or heading bugs (wrong, mirrored, frozen or flipped direction, SIGNAL LOST), phone tilt or pitch, DeviceOrientationEvent.requestPermission, GPS smoothing or accuracy, camera FOV cones or footprints on a map, offline photo capture with IndexedDB and ZIP/GeoJSON/CSV export, Android share-sheet failures, Playwright tests with fake sensors, or wrapping such an app in Capacitor, even if the user only says which way the phone points or my compass is wrong.
+description: Build phone web apps (PWA or Capacitor) that read GPS position, compass heading, camera look direction and tilt from the browser's DeviceOrientation and Geolocation APIs, for field data capture: geotagged photos and videos with direction, a once-a-second sensor log for video, ground-truth surveys, map beams, crosshair aim points and ground footprints. Distilled from CropView, FloodView and Powai Lake Survey, field-tested on Android Chrome and iOS Safari. Use it whenever a task touches deviceorientation, webkitCompassHeading, alpha/beta/gamma, compass or heading bugs (wrong, mirrored, frozen or flipped direction, SIGNAL LOST), phone tilt, requestPermission, GPS smoothing, FOV cones or footprints on a map, offline photo or video capture with IndexedDB and ZIP/GeoJSON/CSV/SRT export, MediaRecorder, a frozen camera preview, capture buttons cut off on a small screen, Android share failures, fake-sensor tests or Capacitor, even if the user only says which way the phone points or my camera froze.
 license: MIT
 ---
 
 # Phone field sensors: position, look direction, tilt, footprint
 
-Every rule here shipped in **CropView v3.6** (crop capture, `somdeepkundu/cropview-v3`) and **FloodView 1.1**
-(flood ground truthing, `somdeepkundu/floodview`, which copies CropView's sensor core unchanged), and was
-corrected after real field failures. Each rule says *why*, because the failure it prevents is silent: the app
+Every rule here shipped in **CropView v3.6** (crop capture, `somdeepkundu/cropview-v3`), **FloodView 1.1**
+(flood ground truthing, `somdeepkundu/floodview`, which copies CropView's sensor core unchanged) or
+**Powai Lake Survey 1.1** (shoot scouting with video, `cropview-v3/users/tanmay`), and was corrected after
+real field failures. Each rule says *why*, because the failure it prevents is silent: the app
 keeps running and records a confident, wrong direction.
 
 The working code is in `assets/template/` — reuse it rather than rewriting the sensor logic:
@@ -16,8 +17,8 @@ The working code is in `assets/template/` — reuse it rather than rewriting the
 | File | What it is |
 |---|---|
 | `sensor-core.js` | Pure math + the compass engine (watchdog, resync, platform detection). Browser and Node. |
-| `field-store.js` | IndexedDB photo store, resumable sessions, ZIP export, two-tap share, wake lock. |
-| `index.html`, `app.js`, `style.css` | A working capture app: HUD, compass ring, tilt bar, crosshair, live map cone, export. |
+| `field-store.js` | IndexedDB photo and video store (video in crash-safe pieces), resumable sessions, ZIP export, two-tap share, wake lock. |
+| `index.html`, `app.js`, `style.css` | A working capture app: HUD, compass ring, tilt bar, crosshair, type grid + photo/video shutter, video with a 1 s log, camera ↻ and watchdog, live map cone, export. |
 | `sw.js`, `manifest.json`, `icons/` | Offline service worker and install metadata. |
 | `../capacitor/` | `native-bridge.js` and `build-www.mjs` for the Android build. |
 
@@ -29,6 +30,7 @@ node <skill>/scripts/vendor_libs.mjs my-app --font atkinson-hyperlegible:400,700
 # rename APP / CLASSES in app.js, colours in style.css, name in manifest.json, then:
 python3 <skill>/scripts/make_icons.py my-app                                          # icon.svg → 192/512 PNG
 python3 <skill>/scripts/test_template.py --app my-app                                 # headless end-to-end test
+python3 <skill>/scripts/test_video_camera.py --app my-app                             # type grid, video, camera recovery
 node <skill>/scripts/test_sensor_core.mjs                                             # math + compass engine
 ```
 
@@ -137,6 +139,31 @@ Formulas, worked numbers and the export field list: `references/gps-footprint.md
 
 Details: `references/storage-export.md`. Check a field export: `python3 scripts/check_export_zip.py survey.zip`.
 
+## Capture controls, video and the camera (Powai Lake Survey 1.1)
+
+- **Classes are a grid, never a sideways row.** One `flex: 1` button per class put four of seven off a
+  412 px screen, with no way to swipe to them. Use a grid of `min(4, n)` columns, pick a type (it stays
+  lit), then press one shutter. Check 320–412 px widths: every control in the viewport, and no label
+  broken mid-word.
+- **Video = `MediaRecorder` + a once-a-second log.** Prefer **WebM**: Chromium's MP4 recorder ignores the
+  timeslice (only a 1 KB header after 8 s, even with forced keyframes), so a crash loses the take. Use
+  `start(3000)` and write each piece straight to IndexedDB (`<id>#000001` …). Join the pieces on stop,
+  and recover clips still marked `recording` when the survey reopens. Safari only does MP4.
+- **The log timer corrects itself**: the next row is due at `t0 + n·1000`, with `t0` taken from the
+  recorder's `start` event. Each row stores the nominal `t` and the actual `ta`. Tapping a type while
+  filming marks that moment. Stop and save on `visibilitychange` → hidden. Cap clips at 10 min.
+- **Export** adds `videos/*.webm|mp4`, a `.srt` with the same name (VLC shows position, heading and tilt as
+  captions), `*_video_track.geojson` (path line + a point per second with `fov_polygon`) and
+  `*_video_seconds.csv`.
+- **Cameras freeze on long sessions**: the track stays `live` but no frames arrive, or it ends after the app
+  was in the background. Keep a small **↻ restart button** always on screen, and run a watchdog: if
+  `video.currentTime` hasn't moved for 4 s or the track has ended, restart (at most once per 15 s).
+  Save a running clip first.
+- **Updates**: app files are cache-first, so listen for `controllerchange` and reload when no survey is
+  open. Otherwise say "close and reopen".
+
+Details, numbers and test recipes: `references/video-camera.md`.
+
 ## Offline and security
 
 Vendor Leaflet, JSZip and the font into `vendor/` (`scripts/vendor_libs.mjs`), precache them in `sw.js`
@@ -153,6 +180,7 @@ workers, basemaps and versioning in the sibling skill **geo-temporal-webapp**.
   heading is still the camera's, never the road's.
 - Wait in the open for ± 12 m; buildings, trees and car roofs make GPS worse.
 - Keep tilt in the green band (40–80°) when the crosshair point matters.
+- Picture frozen? Tap ↻. While filming, keep the app on screen: locking the phone stops the clip (it is kept).
 - Set the camera height when you stand on a bund, bridge or roof — it scales every footprint.
 
 ## Testing
@@ -164,6 +192,8 @@ vector: **α 270, β 70, γ 0 → heading 90 (east), tilt 70**. It also checks t
 with live user activation, the watchdog states, relative-only and iOS-shaped streams, blocked sensors, IndexedDB
 survival across reload, ZIP contents, the two-tap share, and an offline reload. Serve the app with a
 *threaded* server — a single-threaded one deadlocks once the service worker and page fetch in parallel.
+`scripts/test_video_camera.py` covers the type grid at 412 and 360 px, video timing (< 0.3 s drift), marks,
+export, playback, the ↻ button, ended and frozen cameras, and crash recovery (28 checks).
 Headless cannot test a real magnetometer: always do one outdoor check on Android and iPhone before release.
 How-to and patterns: `references/testing.md`.
 
@@ -181,5 +211,7 @@ first Play Store upload — choose it once (CropView: `in.ac.iitb.ctara.cropview
 - [ ] SRC badge visible; `heading_source` and `camera_height_m` in every exported record.
 - [ ] Captures refused above ± 30 m; footprint from camera height, far edge clipped at 85°.
 - [ ] Photos in IndexedDB with `persist()`; resume works after reload; two-tap share; CSV guard.
-- [ ] `test_sensor_core.mjs` and `test_template.py --app` pass; one outdoor check on a real phone.
+- [ ] Every class reachable without swiping at 320–412 px; ↻ camera button visible; watchdog on.
+- [ ] If there's video: WebM first, pieces written as they arrive, recovery on reopen, `.srt` + per-second CSV in the ZIP.
+- [ ] `test_sensor_core.mjs`, `test_template.py --app` and `test_video_camera.py --app` pass; one outdoor check on a real phone.
 - [ ] Version bumped in `sw.js`, `app.js` and `package.json` together; CHANGELOG entry.

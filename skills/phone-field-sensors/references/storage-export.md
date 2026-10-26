@@ -36,6 +36,9 @@ Database with three object stores:
 | `photos` | capture id (out-of-line key) | the full-resolution JPEG `Blob` |
 | `sessions` | `name` (keyPath) | `{name, notes, camH, started, updated, count}` |
 
+Video clips reuse these stores: the record is a `caps` entry with `kind: 'clip'`, and the video sits in
+`photos`, first as pieces `<id>#000001`… while recording, then joined under `<id>`. See `video-camera.md`.
+
 - Call `navigator.storage.persist()` after opening, so the browser does not evict the origin's data under
   storage pressure; show `navigator.storage.estimate().usage` in the Data tab.
 - Wrap each operation in its own transaction and resolve on `oncomplete` (not `onsuccess`), reject on

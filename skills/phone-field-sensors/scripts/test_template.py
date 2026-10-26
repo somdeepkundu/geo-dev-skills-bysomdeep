@@ -89,12 +89,12 @@ with sync_playwright() as p:
     check('tilt bar label FAR? no — 70° is inside 40–80°', pg.inner_text('#tilt-lbl') == '✓ AIM', pg.inner_text('#tilt-lbl'))
     pg.screenshot(path=OUT + '/03_camera.png')
 
-    pg.click('.cbtn[data-cls=feature]'); pg.wait_for_timeout(1200)
+    pg.click('.tbtn[data-cls=feature]'); pg.click('#shutter'); pg.wait_for_timeout(1200)
     ctx.set_geolocation({'latitude': LAT + 0.000225, 'longitude': LON, 'accuracy': 5}); pg.wait_for_timeout(1500)
     pg.evaluate("window.__ori={alpha:135, beta:88, gamma:0}"); pg.wait_for_timeout(600)   # SW, near horizon
-    pg.click('.cbtn[data-cls=ground]'); pg.wait_for_timeout(1200)
+    pg.click('.tbtn[data-cls=ground]'); pg.click('#shutter'); pg.wait_for_timeout(1200)
     pg.evaluate("window.__ori={alpha:0, beta:20, gamma:0}"); pg.wait_for_timeout(600)     # at your feet, facing north
-    pg.click('.cbtn[data-cls=feature]'); pg.wait_for_timeout(1200)
+    pg.click('.tbtn[data-cls=feature]'); pg.click('#shutter'); pg.wait_for_timeout(1200)
     caps = pg.evaluate("__field.S.caps.slice().reverse().map(c=>({cls:c.cls,h:c.heading,t:c.tilt,aim:c.aim,fp:c.fp,ring:!!c.ring,src:c.headingSrc}))")
     check('3 captures in order', [c['cls'] for c in caps] == ['feature', 'ground', 'feature'], [c['cls'] for c in caps])
     check('capture 1: heading 90, aim east, footprint', caps[0]['h'] == 90 and caps[0]['aim'] and caps[0]['ring'])
@@ -140,7 +140,7 @@ with sync_playwright() as p:
     check('footprints: 3 polygons', len(fps['features']) == 3 and fps['features'][0]['geometry']['type'] == 'Polygon')
     check('CSV: header + 3 rows', len(csvt.strip().split('\n')) == 4)
     check('CSV: formula neutralised', "'=HYPERLINK" in csvt, [l for l in csvt.split('\n') if 'HYPERLINK' in l][:1])
-    check('metadata: app + version', pts['metadata']['app'] == 'Field Camera' and pts['metadata']['version'] == '1.0.0')
+    check('metadata: app + version', pts['metadata']['app'] == 'Field Camera' and pts['metadata']['version'] == '1.1.0')
     ok_run = subprocess.run([sys.executable, os.path.join(HERE, 'check_export_zip.py'), zpath], capture_output=True, text=True)
     check('check_export_zip.py passes the export', ok_run.returncode == 0, ok_run.stdout.strip().split('\n')[0])
     bad = os.path.join(OUT, 'bad.zip')                    # the old bugs: altitude as height, tilt default 45, raw formula
