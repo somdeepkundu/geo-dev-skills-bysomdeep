@@ -12,7 +12,9 @@ Every rule here shipped in **CropView v3.6** (crop capture, `somdeepkundu/cropvi
 real field failures. Each rule says *why*, because the failure it prevents is silent: the app
 keeps running and records a confident, wrong direction.
 
-The working code is in `assets/template/` — reuse it rather than rewriting the sensor logic:
+The working code is in `assets/template/` — reuse it rather than rewriting the sensor logic. If a file
+named below is missing from this copy, the latest template, references and tests are in
+`github.com/somdeepkundu/geo-dev-skills-bysomdeep` (`skills/phone-field-sensors/`).
 
 | File | What it is |
 |---|---|
