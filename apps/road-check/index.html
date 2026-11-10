@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'">
+<meta name="theme-color" content="#f4f1ea">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="style.css">
+<title>Road Check</title>
+</head>
+<body>
+
+<!-- ───────── Home ───────── -->
+<div id="home">
+  <header class="top">
+    <div>
+      <h1>Road Check</h1>
+      <p class="sub">Logs how rough the road is while you ride.</p>
+    </div>
+    <span class="badge">experimental</span>
+  </header>
+
+  <section class="card" aria-label="New ride">
+    <label class="field">
+      <span class="lbl">Ride name</span>
+      <input type="text" id="rideName" maxlength="60" autocomplete="off" spellcheck="false">
+    </label>
+
+    <fieldset class="pick">
+      <legend class="lbl">Vehicle</legend>
+      <div class="chips-in" id="vehicle">
+        <label><input type="radio" name="vehicle" value="motorbike" checked><span>Motorbike</span></label>
+        <label><input type="radio" name="vehicle" value="scooter"><span>Scooter</span></label>
+        <label><input type="radio" name="vehicle" value="bicycle"><span>Bicycle</span></label>
+        <label><input type="radio" name="vehicle" value="car"><span>Car</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="pick">
+      <legend class="lbl">Where is the phone?</legend>
+      <div class="chips-in" id="mount">
+        <label><input type="radio" name="mount" value="handlebar mount" checked><span>Handlebar mount</span></label>
+        <label><input type="radio" name="mount" value="fixed to body or dashboard"><span>Fixed to the body</span></label>
+        <label><input type="radio" name="mount" value="pocket or bag"><span>Pocket or bag</span></label>
+      </div>
+      <p class="fine" id="mountNote">Best. The phone feels what the frame feels.</p>
+    </fieldset>
+
+    <label class="field row">
+      <span class="lbl">Raw readings to keep</span>
+      <select id="rawKeep">
+        <option value="all">All of the ride</option>
+        <option value="30">Last 30 minutes + every bump</option>
+        <option value="5">Last 5 minutes + every bump</option>
+      </select>
+    </label>
+
+    <button type="button" class="btn primary wide" id="startBtn">Start ride</button>
+    <ul class="notes">
+      <li>Set it up while you are stopped. Don't touch the phone on the move.</li>
+      <li>The screen has to stay on: a locked phone stops the sensors. Use <b>Dim screen</b> once you start.</li>
+      <li>Nothing leaves the phone until you export a ride.</li>
+    </ul>
+    <button type="button" class="link" id="demoBtn">No bike right now? Play a demo ride</button>
+  </section>
+
+  <section class="card" aria-label="Saved rides">
+    <h2>Saved rides</h2>
+    <p class="empty" id="ridesEmpty">Nothing yet. Your rides stay in this browser until you delete them.</p>
+    <ul class="rides" id="rides"></ul>
+  </section>
+
+  <footer class="foot">Road Check <span class="ver"></span> · built on the phone-field-sensors skill ·
+    Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT</footer>
+</div>
+
+<!-- ───────── Riding ───────── -->
+<div id="ride" hidden>
+  <header class="bar">
+    <span class="rec"><i></i><span id="elapsed">0:00</span></span>
+    <span class="badge" id="state">starting</span>
+  </header>
+
+  <section class="dial" aria-label="Live readings">
+    <div class="read">
+      <span class="lbl">Speed</span>
+      <span class="big" id="speed">—</span>
+      <span class="unit">km/h</span>
+    </div>
+    <div class="read">
+      <span class="lbl">Shake, last second</span>
+      <span class="big" id="shake">—</span>
+      <span class="unit" id="shakeWord">m/s²</span>
+    </div>
+  </section>
+
+  <section class="trace-wrap" aria-label="Vertical shake, last 10 seconds">
+    <canvas id="trace" width="720" height="240"></canvas>
+    <span class="trace-cap">up-down shake · last 10 s · dashed = sharp bump</span>
+  </section>
+
+  <dl class="stats">
+    <div><dt>Distance</dt><dd id="dist">0 m</dd></div>
+    <div><dt>Bumps</dt><dd id="bumps">0</dd></div>
+    <div><dt>Readings</dt><dd id="hz">—</dd></div>
+    <div><dt>GPS</dt><dd id="gps">—</dd></div>
+  </dl>
+
+  <section class="map-wrap">
+    <div id="map" role="region" aria-label="Map of this ride, coloured by roughness"></div>
+    <ul class="legend" id="legend" aria-label="Road classes"></ul>
+  </section>
+
+  <div class="dock">
+    <button type="button" class="btn" id="endBtn">End ride</button>
+    <button type="button" class="btn primary" id="dimBtn">Dim screen</button>
+  </div>
+</div>
+
+<!-- Black screen while riding: swallows every touch. Hold the ring to come back. -->
+<div id="dim" hidden>
+  <div class="dim-box" id="dimBox">
+    <span class="dim-rec"><i></i> <span id="dimElapsed">0:00</span></span>
+    <span class="dim-speed"><span id="dimSpeed">—</span> km/h</span>
+    <span class="dim-word" id="dimWord">&nbsp;</span>
+  </div>
+  <button type="button" class="hold" id="holdBtn" aria-label="Hold for two seconds to wake the screen">
+    <svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34" class="ring-bg"/><circle cx="40" cy="40" r="34" class="ring" id="ring"/></svg>
+    <span>hold to wake</span>
+  </button>
+</div>
+
+<!-- ───────── Summary ───────── -->
+<div id="done" hidden>
+  <header class="top">
+    <div>
+      <button type="button" class="link back" id="backBtn">‹ All rides</button>
+      <h1 id="doneName">Ride</h1>
+      <p class="sub" id="doneWhen">&nbsp;</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <dl class="stats three">
+      <div><dt>Distance</dt><dd id="dDist">—</dd></div>
+      <div><dt>Moving time</dt><dd id="dTime">—</dd></div>
+      <div><dt>Sharp bumps</dt><dd id="dBumps">—</dd></div>
+    </dl>
+    <div class="share-bar" id="shareBar" role="img" aria-label="Share of the ride in each road class"></div>
+    <ul class="legend block" id="doneLegend"></ul>
+    <p class="fine" id="doneNote"></p>
+  </section>
+
+  <section class="card pad0">
+    <div id="doneMap" role="region" aria-label="Map of the ride, coloured by roughness"></div>
+  </section>
+
+  <section class="card">
+    <h2>Roughest stretches</h2>
+    <p class="empty" id="worstEmpty" hidden>No scored stretches in this ride.</p>
+    <ol class="worst" id="worst"></ol>
+  </section>
+
+  <section class="card">
+    <div class="actions">
+      <button type="button" class="btn primary" id="zipBtn">Export ZIP</button>
+      <button type="button" class="btn" id="shareBtn">Share</button>
+    </div>
+    <p class="fine">The ZIP holds the scored 20 m stretches (GeoJSON, CSV), the bump points, the raw readings and a README
+      explaining every column. Open the GeoJSON in QGIS and style by <code>class</code>.</p>
+    <button type="button" class="link danger" id="delBtn">Delete this ride</button>
+  </section>
+
+  <footer class="foot">Road Check <span class="ver"></span> · Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT</footer>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="../../skills/phone-field-sensors/assets/template/sensor-core.js"></script>
+<script src="../../skills/phone-field-sensors/assets/template/field-store.js"></script>
+<script src="road-core.js"></script>
+<script src="ride-store.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
