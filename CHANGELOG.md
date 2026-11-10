@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### apps
+- Road Check 0.1.0 (experimental): logs road roughness while riding. Up-down shake from the accelerometer projected
+  on gravity, 20 m stretches by distance, sharp bumps, curve radius, speed-adjusted index with "no score" under
+  10 km/h, black-screen mode that ignores touches, raw readings in 10 s chunks, ZIP export, demo ride.
+  Tests: 53 Node checks, 64 headless checks. Not yet ridden.
+
 ## 1.2.0 — 2026-10-26
 
 ### phone-field-sensors 1.1.0
