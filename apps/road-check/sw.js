@@ -2,7 +2,7 @@
    App files are cached on install; pages are network-first with a 4 s timeout, files cache-first.
    Map tiles seen online are kept, up to TILE_MAX. Bump VERSION with every change (keep it equal to
    APP.version in app.js). Pattern from phone-field-sensors' template. */
-const VERSION = 'road-check-0.1.0';
+const VERSION = 'road-check-0.1.1';
 const TILE_CACHE = 'road-check-tiles';
 const TILE_MAX = 2000;
 const SKILL = '../../skills/phone-field-sensors/assets/template/';

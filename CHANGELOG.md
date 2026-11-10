@@ -6,7 +6,13 @@
 - Road Check 0.1.0 (experimental): logs road roughness while riding. Up-down shake from the accelerometer projected
   on gravity, 20 m stretches by distance, sharp bumps, curve radius, speed-adjusted index with "no score" under
   10 km/h, black-screen mode that ignores touches, raw readings in 10 s chunks, ZIP export, demo ride.
-  Tests: 53 Node checks, 64 headless checks. Not yet ridden.
+  Tests: 69 Node checks, 73 headless checks. Not yet ridden.
+- Road Check 0.1.1: export is ready for an LLM: `PROMPT.md` (a brief with the ride's own facts, how to read the numbers, and an
+  agentic plan to look up road type, surface, speed breakers and rain), `datapackage.json` (every column explained),
+  a **Copy LLM prompt** button, and a **ZIP** button on every saved ride.
+
+### phone-field-sensors
+- Export section: "Make the export ready for an LLM" and `references/llm-export.md` (layout, template, rules).
 
 ## 1.2.0 — 2026-10-26
 

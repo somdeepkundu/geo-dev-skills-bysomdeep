@@ -155,6 +155,17 @@
     <p class="fine" id="doneNote"></p>
   </section>
 
+  <section class="card">
+    <div class="actions">
+      <button type="button" class="btn primary" id="zipBtn">Export ZIP</button>
+      <button type="button" class="btn" id="shareBtn">Share</button>
+      <button type="button" class="btn ghostline" id="promptBtn">Copy LLM prompt</button>
+    </div>
+    <p class="fine">The ZIP holds the 20 m stretches (GeoJSON, CSV), the bump points, the raw readings, <code>datapackage.json</code> (every column explained) and <code>PROMPT.md</code>:
+      a ready brief for an LLM to analyse the ride and look up road types, surfaces and speed breakers. Open the GeoJSON in QGIS and style by <code>class</code>.</p>
+    <button type="button" class="link danger" id="delBtn">Delete this ride</button>
+  </section>
+
   <section class="card pad0">
     <div id="doneMap" role="region" aria-label="Map of the ride, coloured by roughness"></div>
   </section>
@@ -163,16 +174,6 @@
     <h2>Roughest stretches</h2>
     <p class="empty" id="worstEmpty" hidden>No scored stretches in this ride.</p>
     <ol class="worst" id="worst"></ol>
-  </section>
-
-  <section class="card">
-    <div class="actions">
-      <button type="button" class="btn primary" id="zipBtn">Export ZIP</button>
-      <button type="button" class="btn" id="shareBtn">Share</button>
-    </div>
-    <p class="fine">The ZIP holds the scored 20 m stretches (GeoJSON, CSV), the bump points, the raw readings and a README
-      explaining every column. Open the GeoJSON in QGIS and style by <code>class</code>.</p>
-    <button type="button" class="link danger" id="delBtn">Delete this ride</button>
   </section>
 
   <footer class="foot">Road Check <span class="ver"></span> · Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT</footer>
