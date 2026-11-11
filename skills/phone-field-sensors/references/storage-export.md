@@ -71,6 +71,9 @@ Property names stay the same across CropView and FloodView where the meaning is 
 both. `metadata` carries `app`, `version`, `project`, `notes`, `session_started`, `exported`, `captures`.
 Features in chronological order. Missing photos are counted and reported, not silently skipped.
 
+Time-series apps (Road Check) also put `PROMPT.md` and `datapackage.json` at the ZIP root, so a later LLM session can read
+the export without being told what the columns mean: see `llm-export.md`.
+
 ## Share on Android: two taps
 
 `navigator.share({files})` needs transient user activation. Building a ZIP of 50 photos takes longer than

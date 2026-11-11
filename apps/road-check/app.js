@@ -5,7 +5,7 @@
  * Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT License */
 (function () {
   'use strict';
-  const APP = { name: 'Road Check', version: '0.1.0' };
+  const APP = { name: 'Road Check', version: '0.1.1' };
   const OSM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   const F = window.FieldSensors, FS = window.FieldStore, RC = window.RoadCore;
   const $ = id => document.getElementById(id);
@@ -61,11 +61,21 @@
       const by = (r.sum && r.sum.by_class_m) || {}, tot = (r.sum && r.sum.distance_m) || 0;
       const bar = tot ? Object.keys(COLOR).map(c => by[c] ? `<i style="flex:${by[c]};background:${COLOR[c]}"></i>` : '').join('') : '';
       const tag = r.status === 'interrupted' ? ' <em>interrupted</em>' : r.demo ? ' <em>demo</em>' : '';
-      return `<li><button type="button" data-id="${F.esc(r.id)}"><span class="r-name">${F.esc(r.name)}${tag}</span>
-        <span class="r-meta">${F.esc(fmtWhen(r.started))} · ${fmtDist(tot)}</span><span class="r-bar">${bar}</span></button></li>`;
+      return `<li><button type="button" class="r-open" data-id="${F.esc(r.id)}"><span class="r-name">${F.esc(r.name)}${tag}</span>
+        <span class="r-meta">${F.esc(fmtWhen(r.started))} · ${fmtDist(tot)}</span><span class="r-bar">${bar}</span></button>
+        <button type="button" class="r-zip" data-zip="${F.esc(r.id)}" aria-label="Export ${F.esc(r.name)} as ZIP">ZIP</button></li>`;
     }).join('');
   }
-  $('rides').addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (b) showRide(b.dataset.id); });
+  $('rides').addEventListener('click', async e => {
+    const z = e.target.closest('button[data-zip]');
+    if (z) {
+      z.disabled = true; z.textContent = '…';
+      try { const out = await buildZip(z.dataset.zip); FS.download(out.blob, out.name); toast('Saved ' + out.name, 'ok'); }
+      catch (err) { toast('Export failed: ' + err.message, 'err'); }
+      z.disabled = false; z.textContent = 'ZIP'; return;
+    }
+    const b = e.target.closest('button[data-id]'); if (b) showRide(b.dataset.id);
+  });
   $('backBtn').addEventListener('click', () => { view('home'); refreshRides(); });
 
   /* ── Start. Permission first, synchronously inside the tap (phone-field-sensors rule 4). ── */
@@ -89,7 +99,7 @@
       vehicle: demo ? 'motorbike' : picked('vehicle'), mount: demo ? 'handlebar mount' : picked('mount'),
       started: now, ended: null, updated: now, status: 'recording', demo: !!demo, app: APP.name + ' ' + APP.version,
       settings: Object.assign({}, RC.DEFAULTS, { raw_keep_min: keep === 'all' ? null : +keep }),
-      device: { user_agent: navigator.userAgent, motion_permission: perm, gyroscope: false, gps_speed: false, wake_lock: null, simulated: !!demo },
+      device: { user_agent: navigator.userAgent, utc_offset_min: -new Date().getTimezoneOffset(), motion_permission: perm, gyroscope: false, gps_speed: false, wake_lock: null, simulated: !!demo },
       bumps: [], pauses: [], sum: null
     };
     R = { ride, vert: RC.createVertical(), seg: RC.createSegmenter(), live: [], rate: [], lastMotion: 0, lastFix: 0, fix: null, speed: null,
@@ -399,8 +409,11 @@
   });
 
   /* ── Export ── */
-  async function buildZip() {
-    const { ride, segs } = shown, chunks = await store.chunksFor(ride.id), base = slug(ride.name);
+  async function buildZip(rideId) {            // no id: the ride on the summary screen
+    await store.ready;
+    const ride = rideId ? await store.getRide(rideId) : shown.ride;
+    if (!ride) throw new Error('that ride is no longer stored');
+    const segs = rideId ? await store.segsFor(rideId) : shown.segs, chunks = await store.chunksFor(ride.id), base = slug(ride.name);
     const zip = new JSZip(), sum = RC.summarise(segs);
     zip.file(`data/${base}_segments.geojson`, JSON.stringify(RC.segmentsGeoJSON(ride, segs)));
     zip.file(`data/${base}_bumps.geojson`, JSON.stringify(RC.bumpsGeoJSON(ride, ride.bumps || [])));
@@ -410,6 +423,9 @@
     zip.file(`raw/${base}_raw.csv`, raw.join(''));
     delete sum.worst;
     zip.file('ride.json', JSON.stringify(Object.assign(RC.rideMeta(ride), { summary: sum, raw_rows: rows }), null, 2));
+    const files = { segmentsCSV: `data/${base}_segments.csv`, segmentsGeo: `data/${base}_segments.geojson`, bumpsGeo: `data/${base}_bumps.geojson`, raw: `raw/${base}_raw.csv` };
+    zip.file('datapackage.json', JSON.stringify(RC.dataPackage(ride, files), null, 2));
+    zip.file('PROMPT.md', RC.llmPrompt(ride, segs, ride.bumps || [], { files, rawRows: rows }));
     zip.file('README.txt', readme(ride, segs.length, rows));
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
     const d = new Date(ride.started), stamp = d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + 'Z';
@@ -420,6 +436,7 @@
     return [
       `${ride.app} — ${ride.name}`,
       `Vehicle: ${ride.vehicle}. Phone: ${ride.mount}.${ride.demo ? ' SIMULATED RIDE, not a measurement.' : ''}`,
+      'To analyse this ride with an LLM: attach everything in this ZIP and paste PROMPT.md (or just upload the ZIP and say "follow PROMPT.md").',
       `${nSeg} stretches, ${rows} raw readings.`,
       '',
       'data/*_segments.geojson, *_segments.csv — one row per stretch of road (20 m of travel).',
@@ -452,7 +469,17 @@
     catch (e) { toast('Export failed: ' + e.message, 'err'); }
     b.disabled = false; b.textContent = 'Export ZIP';
   });
-  const sharer = FS.createSharer({ build: buildZip, keyOf: () => shown ? shown.ride.id + ':' + shown.ride.ended : '',
+  $('promptBtn').addEventListener('click', async () => {
+    const b = $('promptBtn'), id = shown && shown.ride.id; if (!id) return;
+    try {
+      const ride = shown.ride, segs = shown.segs, chunks = await store.chunksFor(id);
+      const files = { segmentsCSV: 'data/<name>_segments.csv', segmentsGeo: 'data/<name>_segments.geojson', bumpsGeo: 'data/<name>_bumps.geojson', raw: 'raw/<name>_raw.csv' };
+      const text = RC.llmPrompt(ride, segs, ride.bumps || [], { files, rawRows: chunks.reduce((s, c) => s + c.n, 0) });
+      await navigator.clipboard.writeText(text);
+      toast('Prompt copied. Paste it into an LLM and attach the ZIP.', 'ok');
+    } catch (e) { toast("Couldn't copy here. PROMPT.md is inside the ZIP.", 'err'); }
+  });
+  const sharer = FS.createSharer({ build: () => buildZip(), keyOf: () => shown ? shown.ride.id + ':' + shown.ride.ended : '',
     onLabel: again => { $('shareBtn').textContent = again ? 'Tap to share' : 'Share'; }, onToast: toast });
   $('shareBtn').addEventListener('click', () => { sharer.share().catch(e => toast('Share failed: ' + e.message, 'err')); });
 

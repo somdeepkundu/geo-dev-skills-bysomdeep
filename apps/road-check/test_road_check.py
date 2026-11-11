@@ -9,7 +9,7 @@ segments, storage, the black screen, the summary and the ZIP. Serves the reposit
 sensor-core.js and field-store.js from the skill folder. Map tiles may be blocked offline; that is not a failure.
 Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT License
 """
-import os, sys, io, csv, json, math, zipfile, tempfile, threading, functools, http.server, socketserver
+import os, sys, io, re, csv, json, math, zipfile, tempfile, threading, functools, http.server, socketserver
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,7 +47,7 @@ SENSORS = ['accelerometer', 'gyroscope', 'magnetometer']
 def phone(b, w=390, h=800):
     ctx = b.new_context(viewport={'width': w, 'height': h}, device_scale_factor=2, is_mobile=True, has_touch=True,
                         geolocation={'latitude': LAT, 'longitude': LON, 'accuracy': 5},
-                        permissions=['geolocation'] + SENSORS, accept_downloads=True, service_workers='block')
+                        permissions=['geolocation', 'clipboard-read', 'clipboard-write'] + SENSORS, accept_downloads=True, service_workers='block')
     pg = ctx.new_page()
     pg.on('pageerror', lambda e: errors.append(str(e)))
     pg.on('dialog', lambda d: d.accept())
@@ -151,9 +151,10 @@ with sync_playwright() as p:
     pg.screenshot(path=OUT + '/04_summary.png', full_page=True)
 
     # ── export ──
+    check('summary: Export ZIP is above the map', pg.evaluate("document.getElementById('zipBtn').getBoundingClientRect().top < document.getElementById('doneMap').getBoundingClientRect().top"))
     with pg.expect_download() as dl: pg.tap('#zipBtn')
     path = dl.value.path(); z = zipfile.ZipFile(path); names = [n for n in z.namelist() if not n.endswith('/')]
-    check('ZIP name starts RoadCheck_ and holds 6 files', dl.value.suggested_filename.startswith('RoadCheck_Powai_loop_') and len(names) == 6, dl.value.suggested_filename + ' ' + str(names))
+    check('ZIP name starts RoadCheck_ and holds 8 files', dl.value.suggested_filename.startswith('RoadCheck_Powai_loop_') and len(names) == 8, dl.value.suggested_filename + ' ' + str(names))
     gj = json.loads(z.read([n for n in names if n.endswith('_segments.geojson')][0]))
     nseg = len(gj['features'])
     check('segments GeoJSON: LineStrings with class, index, speed', nseg >= 8 and all(f['geometry']['type'] == 'LineString' and 'index' in f['properties'] for f in gj['features']), nseg)
@@ -167,6 +168,15 @@ with sync_playwright() as p:
     check('bump point exported with its peak', len(bj['features']) == 1 and bj['features'][0]['properties']['peak_v'] > 6, bj['features'][0]['properties'])
     raw = z.read([n for n in names if n.endswith('_raw.csv')][0]).decode().strip().split('\n')
     check('raw CSV: 8 columns, over 1000 readings, unix-ms times', raw[0].startswith('time_unix_ms,ax,ay,az') and len(raw) > 1000 and len(raw[5].split(',')) == 8 and float(raw[5].split(',')[0]) > 1.7e12, len(raw))
+    dpk = json.loads(z.read('datapackage.json'))
+    seg_csv_header = list(rows[0].keys())
+    check('datapackage.json describes every column of the segments CSV', [f['name'] for f in dpk['resources'][0]['schema']['fields']] == seg_csv_header and all(f.get('description') for f in dpk['resources'][0]['schema']['fields']))
+    check('datapackage resources point at files that are in the ZIP', all(r['path'] in names for r in dpk['resources']), [r['path'] for r in dpk['resources'] if r['path'] not in names])
+    prompt = z.read('PROMPT.md').decode()
+    check('PROMPT.md: names the real files, the ride and the plan', all(n in prompt for n in ['data/Powai_loop_segments.csv', 'raw/Powai_loop_raw.csv', '## Plan', 'datapackage.json']) and 'Powai loop' in prompt)
+    check("PROMPT.md: the ride's own numbers are in it (distance, bumps, bounding box)", 'sharp bumps 1' in prompt and 'bounding box' in prompt and re.search(r'local time = UTC[+-]\d\d:\d\d', prompt), [l for l in prompt.split('\n') if 'Time (UTC)' in l])
+    check('PROMPT.md: the formula-guard apostrophe is not in prose, no undefined/NaN', 'undefined' not in prompt and 'NaN' not in prompt)
+    check('README points to PROMPT.md', 'PROMPT.md' in z.read('README.txt').decode())
     readme = z.read('README.txt').decode()
     check('README explains columns and says NOT CALIBRATED', 'NOT CALIBRATED' in readme and 'rms_v' in readme and 'curve_radius_gyro_m' in readme)
     meta = json.loads(z.read('ride.json'))
@@ -174,15 +184,21 @@ with sync_playwright() as p:
 
     # ── saved rides survive a reload ──
     pg.tap('#backBtn'); pg.wait_for_timeout(300)
+    with pg.expect_download() as dl2: pg.tap('#rides .r-zip')
+    z2 = zipfile.ZipFile(dl2.value.path())
+    check('home list: a ZIP button on each ride downloads the same export', dl2.value.suggested_filename == dl.value.suggested_filename and sorted(z2.namelist()) == sorted(z.namelist()), dl2.value.suggested_filename)
     check('the ride is listed on the home screen', pg.locator('#rides li').count() == 1 and '=Powai loop' in txt(pg, '#rides'))
     check('escaped, not run as HTML', pg.evaluate("document.querySelector('#rides .r-name').children.length") == 0)
     pg.reload(); pg.wait_for_timeout(600)
     check('still listed after a reload', pg.locator('#rides li').count() == 1)
     pg.tap('#rides button'); pg.wait_for_timeout(700)
+    pg.tap('#promptBtn'); pg.wait_for_timeout(500)
+    clip = pg.evaluate('navigator.clipboard.readText()')
+    check('Copy LLM prompt puts PROMPT.md on the clipboard', clip.startswith('# Task: analyse one road-roughness ride') and '## Plan' in clip and 'Powai loop' in clip and 'Copied' not in txt(pg, '#toast') or 'Prompt copied' in txt(pg, '#toast'), txt(pg, '#toast'))
     check('reopened from storage with its segments', pg.is_visible('#done') and pg.evaluate("document.querySelectorAll('#worst li').length") >= 3)
 
     # ── a ride cut short by a reload ──
-    pg.tap('#backBtn'); pg.tap('#startBtn'); pg.wait_for_timeout(300)
+    pg.tap("#backBtn"); pg.tap("#startBtn"); pg.wait_for_timeout(300)
     pg.evaluate(SHAKE + '({amp: 5, gyro: false})'); pg.wait_for_timeout(2200)
     drive(ctx, pg, 7)                                           # GPS restarts 200 m back: that hop must not count
     check('no gyroscope: still logs, turn rate stays null', st(pg, 'R.seg.segments.length') >= 2 and st(pg, 'R.seg.segments.every(s => s.turn_rate_dps === null)') and st(pg, 'R.ride.device.gyroscope') is False)

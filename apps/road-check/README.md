@@ -1,6 +1,6 @@
 # Road Check
 
-Logs how rough a road is while you ride, from the phone's accelerometer and GPS. **Experimental (0.1.0):**
+Logs how rough a road is while you ride, from the phone's accelerometer and GPS. **Experimental (0.1.1):**
 tested with simulated sensors only; the class thresholds are starting values and not calibrated.
 
 **Open it on a phone:** https://somdeepkundu.github.io/geo-dev-skills-bysomdeep/apps/road-check/
@@ -12,7 +12,10 @@ tested with simulated sensors only; the class thresholds are starting values and
 3. Tap **Dim screen**. The screen goes black and ignores touches; hold the ring for 2 s to wake it.
    A web page cannot read sensors behind a locked screen, so the screen stays on instead. Turn the brightness down.
 4. Ride. At the end, wake the screen and tap **End ride** twice.
-5. **Export ZIP** and open `data/*_segments.geojson` in QGIS, styled by `class`.
+5. **Export ZIP** (or the **ZIP** button on any saved ride) and open `data/*_segments.geojson` in QGIS, styled by `class`.
+6. To analyse with an LLM: **Copy LLM prompt**, paste it into a chat, attach the ZIP. The same brief is inside the ZIP as `PROMPT.md`;
+   `datapackage.json` explains every column. The brief tells the model to look up road type, surface, speed breakers and rain
+   (OpenStreetMap, Open-Meteo) and to say what it could not fetch. The app itself fetches nothing.
 
 *No bike right now?* **Play a demo ride** feeds a made-up road through the same code.
 
@@ -40,8 +43,8 @@ tested with simulated sensors only; the class thresholds are starting values and
 Geo maths, CSV guard, download and two-tap share come from `skills/phone-field-sensors`.
 
 ```bash
-node apps/road-check/test_road_core.mjs       # 53 checks on synthetic rides
-python3 apps/road-check/test_road_check.py    # 64 checks with a simulated phone (Playwright)
+node apps/road-check/test_road_core.mjs       # 69 checks on synthetic rides
+python3 apps/road-check/test_road_check.py    # 73 checks with a simulated phone (Playwright)
 ```
 
 Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT License

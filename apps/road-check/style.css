@@ -62,8 +62,12 @@ input[type="text"], select { font: inherit; color: var(--ink); background: var(-
 /* saved rides */
 .rides, .worst { list-style: none; margin: 0; padding: 0; }
 .rides li + li, .worst li + li { border-top: 1px solid var(--line); }
-.rides button { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 1fr; gap: 3px; width: 100%; padding: 12px 0; cursor: pointer; }
-.rides button:focus-visible, .worst button:focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; border-radius: 6px; }
+.rides li { display: flex; align-items: center; gap: 12px; }
+.rides .r-open { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 1fr; gap: 3px; flex: 1; min-width: 0; padding: 12px 0; cursor: pointer; }
+.rides .r-zip { font: inherit; font-weight: 700; font-size: .82rem; letter-spacing: .04em; flex: none; min-width: 56px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.rides .r-zip:disabled { opacity: .5; }
+.rides .r-zip:focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
+.rides .r-open:focus-visible, .worst button:focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; border-radius: 6px; }
 .r-name { font-weight: 700; overflow-wrap: anywhere; } .r-name em { font-style: normal; font-weight: 400; font-size: .76rem; color: var(--warn); margin-left: 6px; }
 .r-meta { font-size: .84rem; color: var(--muted); }
 .r-bar, .share-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); }
@@ -137,3 +141,4 @@ input[type="text"], select { font: inherit; color: var(--ink); background: var(-
 @media (max-width: 350px) { .big { font-size: 3.4rem; } .stats { grid-template-columns: repeat(2, 1fr); } .stats.three { grid-template-columns: repeat(3, 1fr); } .stats.three dd { font-size: 1.2rem; } }
 @media (max-height: 640px) { #trace { height: 84px; } .big { font-size: 3.4rem; } }
 #dim:not([hidden]) ~ #toast { bottom: auto; top: calc(env(safe-area-inset-top) + 9vh); background: #1c201c; color: #aab1aa; }
+.actions .ghostline { grid-column: 1 / -1; background: transparent; }

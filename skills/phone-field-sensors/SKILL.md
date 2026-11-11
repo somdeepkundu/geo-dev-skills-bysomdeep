@@ -141,6 +141,21 @@ Formulas, worked numbers and the export field list: `references/gps-footprint.md
 
 Details: `references/storage-export.md`. Check a field export: `python3 scripts/check_export_zip.py survey.zip`.
 
+**Make the export ready for an LLM** (Road Check 0.1.0). A ZIP that only a person can read wastes the data: add two
+files at its root so any LLM session can analyse it without being told what the columns mean.
+- `datapackage.json` ([Frictionless Data Package](https://specs.frictionlessdata.io/data-package/)): every table with each
+  column's name, type, unit and meaning, and what an *empty* cell means. Generate it and the CSV header from one
+  field list, and test that they match; two hand-written copies drift apart.
+- `PROMPT.md`: a brief for a future session, filled with this ride's or survey's own facts (time, place, counts, bounding box,
+  the worst items). It lists the files, then **how to read the numbers** (empty is not zero; what is calibrated and what
+  is a starting guess; how far positions can be trusted; what the mount or phone pose does), then a plan whose second
+  step is *agentic enrichment*: look up what the app cannot know (road type and surface, nearby features, place names,
+  weather) from OpenStreetMap and open APIs, record each source, skip what is unreachable and say so, never invent. It
+  ends with the deliverables wanted and an editable question. The app fetches nothing itself and stays offline-first.
+Add a **Copy LLM prompt** button too, for pasting into a chat; the same text is in the ZIP. Escape anything the user typed
+(names, notes) before it goes into the prompt, because the prompt is read as instructions. Template, rules and the worked
+example: `references/llm-export.md`.
+
 ## Capture controls, video and the camera (Powai Lake Survey 1.1)
 
 - **Classes are a grid, never a sideways row.** One `flex: 1` button per class put four of seven off a
