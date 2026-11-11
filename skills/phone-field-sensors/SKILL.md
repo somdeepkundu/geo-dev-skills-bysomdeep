@@ -185,7 +185,13 @@ Details, numbers and test recipes: `references/video-camera.md`.
 
 Vendor Leaflet, JSZip and the font into `vendor/` (`scripts/vendor_libs.mjs`), precache them in `sw.js`
 (network-first for HTML with a 4 s timeout, cache-first for files, a capped tile cache of 3000), and bump
-`VERSION` in `sw.js` with every change. Add a Content-Security-Policy meta (scripts from self only; images
+`VERSION` in `sw.js` with every change. **Cache map tiles as real CORS responses, never opaque ones**: a no-cors tile
+is stored as an opaque response that browsers count as several MB each against the storage quota, so a few hundred
+of them can fill it and make the IndexedDB writes of your survey data fail (Road Check 0.2.0, found by a test). Fetch
+tiles in the service worker with `{mode: 'cors', credentials: 'omit'}`, cache only `res.ok && res.type !== 'opaque'`,
+and rename the tile cache when you fix an old app so the opaque entries are dropped. Show an "offline ready" status
+from the worker (what is cached, what is missing), cache core files so that one missing file fails the install
+rather than leaving a half-copy, and make the app folder self-contained (no `../` paths). Add a Content-Security-Policy meta (scripts from self only; images
 from self and the tile servers). Escape every string that came from a user or a file. More on service
 workers, basemaps and versioning in the sibling skill **geo-temporal-webapp**.
 

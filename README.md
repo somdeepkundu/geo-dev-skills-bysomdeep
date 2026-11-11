@@ -55,8 +55,8 @@ python3 skills/geo-temporal-webapp/scripts/test_template.py --app my-app
 | `node skills/phone-sensor-lab/scripts/test_sensor_lab.mjs` | Compass trust, gravity tilt, steps, cover, NMEA, decoders (58 checks) |
 | `python3 skills/phone-sensor-lab/scripts/test_template.py` | Headless Sensor Lab with a simulated phone, including a metro (27 checks) |
 | `python3 apps/look-check/test_look_check.py` | Look Check with simulated Android and iOS sensors and a metro (38 checks) |
-| `node apps/road-check/test_road_core.mjs` | Road Check maths on synthetic rides: pose independence, distance segments, bumps, curves, GPS gaps and jumps, LLM export (69 checks) |
-| `python3 apps/road-check/test_road_check.py` | Road Check with a simulated phone: ride, black screen, pause, summary, ZIP, reload (73 checks) |
+| `node apps/road-check/test_road_core.mjs` | Road Check maths on synthetic rides: pose independence, distance segments, bumps, curves, GPS gaps and jumps, LLM export, self-contained offline list (77 checks) |
+| `python3 apps/road-check/test_road_check.py` | Road Check with a simulated phone: ride, black screen, pause, summary, ZIP, reload, offline with the worker on and the network off (92 checks) |
 | `node skills/geo-temporal-webapp/scripts/test_libs.mjs` | Time, georeferencing and explorer helpers (50 checks) |
 | `python3 skills/geo-temporal-webapp/scripts/test_template.py` | Headless timeline app: states, playhead, escaping, CSP, phone width (16 checks) |
 

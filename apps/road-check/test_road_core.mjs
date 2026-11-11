@@ -6,7 +6,7 @@
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const RC = require('./road-core.js');
-const F = require('../../skills/phone-field-sensors/assets/template/sensor-core.js');
+const F = require('./lib/sensor-core.js');
 
 let pass = 0, fail = 0;
 const check = (name, cond, detail = '') => { cond ? pass++ : fail++; console.log((cond ? 'PASS ' : 'FAIL ') + name + (detail !== '' ? ' — ' + detail : '')); };
@@ -200,6 +200,27 @@ function ride({ legs, toDev = pose(0, 0), hz = 60, gpsSpeed = true, spikes = [],
   check('prompt: a demo ride is labelled simulated', RC.llmPrompt(Object.assign({}, meta, { demo: true }), R.segs, R.bumps, { files }).includes('SIMULATED DEMO RIDE'));
   const E = RC.llmPrompt(meta, [], [], { files });
   check('prompt for a ride with no stretches still reads sensibly', E.includes('none (no stretches were logged)') && !/undefined|NaN/.test(E) && E.includes('S,W,N,E'));
+}
+
+// 10. The app is self-contained and its offline list is real
+{
+  const fs = require('node:fs'), path = require('node:path'), here = path.dirname(new URL(import.meta.url).pathname);
+  const skill = path.join(here, '../../skills/phone-field-sensors/assets/template');
+  for (const f of ['sensor-core.js', 'field-store.js'])
+    check(`lib/${f} is identical to the skill's copy (no drift)`, fs.readFileSync(path.join(here, 'lib', f), 'utf8') === fs.readFileSync(path.join(skill, f), 'utf8'));
+  const sw = fs.readFileSync(path.join(here, 'sw.js'), 'utf8'), html = fs.readFileSync(path.join(here, 'index.html'), 'utf8'), app = fs.readFileSync(path.join(here, 'app.js'), 'utf8');
+  const list = name => { const a = sw.indexOf('const ' + name + ' = ['), b = sw.indexOf('];', a); return sw.slice(a, b).split("'").filter(s => s.startsWith('./')).map(s => s.slice(2)); };
+  const core = list('CORE'), optional = list('OPTIONAL');
+  const missing = l => l.filter(f => f && !fs.existsSync(path.join(here, f)));
+  check('every CORE file in sw.js exists', core.length >= 16 && missing(core).length === 0, missing(core).join(' '));
+  check('every OPTIONAL file in sw.js exists', optional.length >= 2 && missing(optional).length === 0, missing(optional).join(' '));
+  const refs = [...html.matchAll(/(?:src|href)="([^"#?]+)"/g)].map(m => m[1]).filter(u => !/^(https?:|data:)/.test(u));
+  const unlisted = refs.filter(u => !core.includes(u) && !optional.includes(u));
+  check('every local file the page loads is in the offline list', refs.length >= 10 && unlisted.length === 0, unlisted.join(' '));
+  check('nothing loads from outside the app folder', !refs.some(u => u.startsWith('..')) && !sw.includes('../'));
+  const ver = /version: '([\d.]+)'/.exec(app)[1];
+  check('sw.js VERSION matches the app version', sw.includes("'road-check-" + ver + "'"), ver);
+  check('no external script or stylesheet is loaded', !/(?:src|href)="https?:\/\//.test(html));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

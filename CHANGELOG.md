@@ -11,8 +11,19 @@
   agentic plan to look up road type, surface, speed breakers and rain), `datapackage.json` (every column explained),
   a **Copy LLM prompt** button, and a **ZIP** button on every saved ride.
 
+- Road Check 0.2.0: works offline, checked with the worker on and the network off (reload, ride, summary, ZIP, prompt). App folder is
+  self-contained (`lib/`); tolerant install (core files required, icons optional); "Works offline" status line; **Save the map around me**
+  for offline tiles; update loads after the ride. Fix: tiles are cached as real CORS responses, not opaque ones, which had filled the
+  storage quota and broken saving the ride. Tests: 77 Node, 92 headless.
+
 ### phone-field-sensors
+- Template `sw.js`: tiles are cached as real CORS responses, never opaque (an opaque tile counts as several MB of quota); tile cache
+  renamed `field-camera-tiles-2` so old opaque entries are dropped. SKILL.md "Offline and security" says why. (40 of 41 template checks
+  pass; the one failure, "SIGNAL LOST by 8 s", fails the same way with the original worker.)
 - Export section: "Make the export ready for an LLM" and `references/llm-export.md` (layout, template, rules).
+
+### geo-temporal-webapp
+- Template `sw.js`: same tile fix (real CORS responses only, never opaque); tile cache renamed `event-timeline-tiles-2`; rule 19 says why. 16/16 template checks pass.
 
 ## 1.2.0 — 2026-10-26
 

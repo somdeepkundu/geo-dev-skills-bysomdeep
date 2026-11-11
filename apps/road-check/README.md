@@ -1,6 +1,6 @@
 # Road Check
 
-Logs how rough a road is while you ride, from the phone's accelerometer and GPS. **Experimental (0.1.1):**
+Logs how rough a road is while you ride, from the phone's accelerometer and GPS. **Experimental (0.2.0):**
 tested with simulated sensors only; the class thresholds are starting values and not calibrated.
 
 **Open it on a phone:** https://somdeepkundu.github.io/geo-dev-skills-bysomdeep/apps/road-check/
@@ -37,14 +37,26 @@ tested with simulated sensors only; the class thresholds are starting values and
 - A bump's position is good to about one second of travel.
 - Logging with the phone truly locked needs the Android build (Capacitor with a foreground service). Not done yet.
 
+## Offline
+
+- **The app works with no network** once it has been opened once online. The home screen says so ("Works offline · saved 16 files").
+  If it says anything else, connect and reload. The folder is self-contained (`lib/` holds the shared sensor code), and a missing file fails the
+  install instead of leaving a half-copy.
+- **Sensors, GPS, storage, ZIP export and Copy LLM prompt need no network.**
+- **The street map behind the route needs internet** unless saved: **Save the map around me** (home screen, over wifi) stores about 1.5 km around you
+  at zooms 15 to 17 (at most 220 tiles, a few at a time). Tiles you have viewed are also kept (up to 2500). Offline, the route lines still draw on a blank map.
+- Tiles are stored as real responses of their true size, never as opaque ones: an opaque tile counts as several MB against the phone's storage quota and
+  can make saving the ride itself fail (found by the test; the skill templates had the same flaw and are fixed).
+- A new version installs in the background and loads after the ride; it never reloads the page mid-ride.
+
 ## Files
 
 `road-core.js` maths (browser and Node) · `ride-store.js` IndexedDB · `app.js`, `index.html`, `style.css` · `sw.js` offline.
-Geo maths, CSV guard, download and two-tap share come from `skills/phone-field-sensors`.
+`lib/` is a copy of `sensor-core.js` and `field-store.js` from `skills/phone-field-sensors` (geo maths, CSV guard, download, two-tap share); a test fails if it drifts.
 
 ```bash
-node apps/road-check/test_road_core.mjs       # 69 checks on synthetic rides
-python3 apps/road-check/test_road_check.py    # 73 checks with a simulated phone (Playwright)
+node apps/road-check/test_road_core.mjs       # 77 checks on synthetic rides
+python3 apps/road-check/test_road_check.py    # 92 checks with a simulated phone (includes the offline run: worker on, network off) (Playwright)
 ```
 
 Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT License

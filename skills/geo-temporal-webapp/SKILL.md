@@ -126,6 +126,9 @@ npm, so the app loads with no CDN, works offline and passes a strict CSP. Keep t
 **19. Cache tiles with a cap.** Every tile seen online is kept, up to 3000, oldest dropped first. A map
 browsed before going out still shows offline. The shell is cached on install; pages are network-first with
 a 4 s timeout so a weak signal never hangs the page.
+Cache tiles as real CORS responses (`fetch(url, {mode: 'cors', credentials: 'omit'})`, keep only `res.ok && res.type !== 'opaque'`):
+an opaque tile counts as several MB against the storage quota, so a few hundred can fill it and make IndexedDB writes fail.
+The template does this; when fixing an older app, rename the tile cache so the opaque entries are dropped.
 
 **20. Bump `VERSION` whenever a cached file changes.** `sw.js` VERSION, `APP.version` and `package.json` version
 must match. The activate step deletes old shell caches, so a stale page never mixes with a new script.

@@ -20,6 +20,7 @@
     <div>
       <h1>Road Check</h1>
       <p class="sub">Logs how rough the road is while you ride.</p>
+      <p class="offline" id="offlineLine"><i id="offlineDot"></i><span id="offlineText">Checking offline copy…</span></p>
     </div>
     <span class="badge">experimental</span>
   </header>
@@ -66,6 +67,14 @@
       <li>Nothing leaves the phone until you export a ride.</li>
     </ul>
     <button type="button" class="link" id="demoBtn">No bike right now? Play a demo ride</button>
+  </section>
+
+  <section class="card" aria-label="Map for offline use">
+    <h2>Map for offline use</h2>
+    <p class="fine" style="margin-top:0">The road lines always draw. The street map behind them needs internet unless you save it first.
+      Do this once at home, over wifi, for the area you will ride in.</p>
+    <button type="button" class="btn wide slim" id="tilesBtn">Save the map around me (about 1.5 km)</button>
+    <p class="fine" id="tilesNote">Checking saved map…</p>
   </section>
 
   <section class="card" aria-label="Saved rides">
@@ -183,8 +192,8 @@
 
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="vendor/jszip.min.js"></script>
-<script src="../../skills/phone-field-sensors/assets/template/sensor-core.js"></script>
-<script src="../../skills/phone-field-sensors/assets/template/field-store.js"></script>
+<script src="lib/sensor-core.js"></script>
+<script src="lib/field-store.js"></script>
 <script src="road-core.js"></script>
 <script src="ride-store.js"></script>
 <script src="app.js"></script>

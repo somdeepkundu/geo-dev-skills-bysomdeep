@@ -14,7 +14,7 @@
  * Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT License */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('../../skills/phone-field-sensors/assets/template/sensor-core.js'));
+    module.exports = factory(require('./lib/sensor-core.js'));
   } else root.RoadCore = factory(root.FieldSensors);
 })(typeof self !== 'undefined' ? self : this, function (F) {
   'use strict';
@@ -403,12 +403,22 @@ Write the enriched table as **new files** (for example \`segments_enriched.csv\`
  c. Bumps: split into explained (near a speed breaker, crossing, joint) and unexplained; rank the unexplained by \`peak_v\` and check each in the raw file (a real pothole is a short sharp event followed by ringing; a long rough patch is texture).
  d. Check the speed adjustment: within one road type, regress log(rms_v) on log(speed_kmh) for scored and slow stretches alike. The slope is the speed exponent the data suggest (the app assumes ${o.speedExp}). If it is clearly different, recompute the index with it, report both, and do not overwrite the original.
  e. Curves: are rough stretches mostly on bends (high \`rms_lateral\`, small \`curve_radius_*\`)? If so, lean may be inflating the shake there.
- f. Anything surprising: a stretch that is very rough on an otherwise smooth road is the most useful finding.
+ f. Bump count sanity: if there are more than about 50 bumps per km, the 4 m/s² threshold is catching texture or body motion, not single defects. Re-detect with a threshold relative to the ride (for example 4 × the median \`rms_v\`) and report both counts.
+ g. Anything surprising: a stretch that is very rough on an otherwise smooth road is the most useful finding.
 
 **4. Deliver.**
  - A short written summary (under 300 words) for a non-expert: how good or bad was this route, where, and what to look at first.
  - A ranked list of the 10 stretches most worth inspecting: coordinates, road name and type, index, speed, bumps, your evidence, and a confidence (high / medium / low).
  - A table by road type and surface, and a map (or GeoJSON ready for QGIS) coloured by class.
+ - **A one-page report poster** (\`road_report_poster.png\` at 200 dpi, plus a PDF), made in Python with **seaborn** on matplotlib (\`sns.set_theme(style="whitegrid", context="talk")\`). Panels:
+   1. a title strip: ride name, date, place, vehicle, mount, distance, moving time, and a one-line verdict;
+   2. a map of the route (stretch lines in lon/lat, aspect corrected by cos(lat)) coloured by \`rms_v\` with a colourbar, the 5 roughest stretches labelled 1–5, start and end marked, on a faint OpenStreetMap basemap (\`contextily.add_basemap(ax, crs="EPSG:4326", source=cx.providers.OpenStreetMap.Mapnik, alpha=0.35, zorder=0)\`, credit "© OpenStreetMap contributors" on the map). If the tiles cannot be fetched, draw without them and write "no basemap" in the panel title;
+   3. \`rms_v\` and speed along the ride (x = distance in km);
+   4. log(rms_v) against log(speed) with \`sns.regplot\`, the fitted slope printed (check 3d);
+   5. distance share per class as a horizontal bar, or per road type once enriched;
+   6. the vertical-shake spectrum from the raw file (Welch), to show where the energy is (road texture is mostly above about 10 Hz, rider and pocket motion below);
+   7. a small table of the top 5 stretches, and a footer with caveats and sources.
+   Use one colour ramp for roughness everywhere, readable labels, no chart junk. Open the image and check every panel before handing it over.
  - "What I could not do and why", and "what extra data would make this stronger" (for example the same road ridden twice, a second vehicle, a few photographed defects to calibrate against).
 
 ## Rules
