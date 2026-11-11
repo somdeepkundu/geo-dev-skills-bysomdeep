@@ -5,7 +5,7 @@
  * Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT License */
 (function () {
   'use strict';
-  const APP = { name: 'Road Check', version: '0.1.1' };
+  const APP = { name: 'Road Check', version: '0.2.0' };
   const OSM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
   const F = window.FieldSensors, FS = window.FieldStore, RC = window.RoadCore;
   const $ = id => document.getElementById(id);
@@ -25,7 +25,63 @@
   let shown = null;             // the ride on the summary screen
 
   document.querySelectorAll('.ver').forEach(e => { e.textContent = APP.version; });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  /* ── Offline copy ──────────────────────────────────────────────
+     The service worker keeps the app. This shows whether that worked, and offers to keep the street map too. */
+  const offDot = $('offlineDot'), offTxt = $('offlineText');
+  function offline(kind, text) { offDot.className = kind; offTxt.textContent = text; }
+  function askStatus() { const c = navigator.serviceWorker && navigator.serviceWorker.controller; if (c) c.postMessage({ type: 'status' }); }
+  let reloadOnUpdate = false;
+  if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+    offline('bad', 'Offline copy is not available here. Open the https address in Chrome.');
+  } else {
+    navigator.serviceWorker.addEventListener('message', e => {
+      const d = e.data; if (!d || d.type !== 'status') return;
+      if (d.missing.length) offline('warn', 'Offline copy incomplete (' + d.missing.length + ' files missing). Connect and reload.');
+      else offline('ok', 'Works offline · saved ' + d.core + ' files');
+      tileCount(d.tiles);
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!reloadOnUpdate) { reloadOnUpdate = true; return; }          // the first claim on a fresh install: nothing to reload
+      if (R) toast('A new version is ready. It loads after this ride.'); else location.reload();
+    });
+    navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => {
+      if (navigator.serviceWorker.controller) askStatus();
+      else { offline('warn', 'Saving for offline… reload once when it finishes'); navigator.serviceWorker.addEventListener('controllerchange', () => setTimeout(askStatus, 300), { once: true }); }
+    }).catch(() => offline('bad', 'Could not save for offline. Check storage space and reload online.'));
+    reloadOnUpdate = !!navigator.serviceWorker.controller;
+    offline('', 'Checking offline copy…');
+  }
+
+  /* Map tiles for the area around you. User-started, one small square (about the screens you would look at anyway),
+     loaded the way the map loads them, a few at a time, so OpenStreetMap's tile rules are respected. */
+  const TILE_CAP = 220;
+  function tileList(lat, lon, km, zooms) {
+    const out = [], dLat = km / 111.2, dLon = km / (111.2 * Math.cos(lat * Math.PI / 180));
+    const tx = (lo, z) => Math.floor((lo + 180) / 360 * Math.pow(2, z));
+    const ty = (la, z) => { const r = la * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z)); };
+    for (const z of zooms) for (let x = tx(lon - dLon, z); x <= tx(lon + dLon, z); x++) for (let y = ty(lat + dLat, z); y <= ty(lat - dLat, z); y++) out.push(OSM.replace('{z}', z).replace('{x}', x).replace('{y}', y));
+    return out;
+  }
+  function tileCount(n) { $('tilesNote').textContent = isNum(n) ? (n ? n + ' map tiles are saved on this phone (the ones you have viewed or saved).' : 'No map saved yet. Without it the map behind your route stays blank offline.') : ''; }
+  let tilesBusy = false;
+  $('tilesBtn').addEventListener('click', () => {
+    if (tilesBusy) return;
+    if (!navigator.onLine) { toast('You are offline. Do this over wifi or mobile data.', 'err'); return; }
+    if (!(navigator.serviceWorker && navigator.serviceWorker.controller)) { toast('Reload the page once so the offline copy can start, then try again.', 'err'); return; }
+    if (!navigator.geolocation) { toast('This browser cannot give your location.', 'err'); return; }
+    tilesBusy = true; const b = $('tilesBtn'); b.disabled = true; $('tilesNote').textContent = 'Finding where you are…';
+    navigator.geolocation.getCurrentPosition(async p => {
+      const list = tileList(p.coords.latitude, p.coords.longitude, 1.5, [15, 16, 17]).slice(0, TILE_CAP);
+      let done = 0, ok = 0, i = 0;
+      const one = () => new Promise(res => { const im = new Image(); im.onload = () => { ok++; res(); }; im.onerror = () => res(); im.src = list[i++]; });
+      const worker = async () => { while (i < list.length) { await one(); done++; $('tilesNote').textContent = 'Saving the map… ' + done + ' of ' + list.length; await new Promise(r => setTimeout(r, 120)); } };
+      await Promise.all([worker(), worker(), worker()]);
+      tilesBusy = false; b.disabled = false;
+      toast(ok === list.length ? 'Map saved for offline use' : ok + ' of ' + list.length + ' tiles saved. Try again on a better connection.', ok ? 'ok' : 'err');
+      askStatus();
+    }, e => { tilesBusy = false; b.disabled = false; $('tilesNote').textContent = ''; toast('Could not get your location: ' + e.message, 'err'); }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+  });
 
   /* ── small helpers ── */
   let toastT = 0;

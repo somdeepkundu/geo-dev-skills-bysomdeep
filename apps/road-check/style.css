@@ -142,3 +142,8 @@ input[type="text"], select { font: inherit; color: var(--ink); background: var(-
 @media (max-height: 640px) { #trace { height: 84px; } .big { font-size: 3.4rem; } }
 #dim:not([hidden]) ~ #toast { bottom: auto; top: calc(env(safe-area-inset-top) + 9vh); background: #1c201c; color: #aab1aa; }
 .actions .ghostline { grid-column: 1 / -1; background: transparent; }
+
+.offline { display: flex; align-items: center; gap: 7px; margin: 8px 0 0; font-size: .82rem; color: var(--muted); }
+.offline i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.offline i.ok { background: var(--ok); } .offline i.warn { background: var(--warn); } .offline i.bad { background: var(--bad); }
+.btn.slim { min-height: 46px; margin-top: 4px; font-size: .95rem; }

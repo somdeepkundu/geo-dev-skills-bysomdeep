@@ -4,7 +4,7 @@
    • Map tiles: every tile seen while online is kept, up to TILE_MAX, oldest dropped first.
    Bump VERSION whenever any cached file changes, and keep it equal to app.js APP.version. */
 const VERSION = 'event-timeline-1.0.0';
-const TILE_CACHE = 'event-timeline-tiles';
+const TILE_CACHE = 'event-timeline-tiles-2';   // new name drops tiles cached as opaque responses by older versions
 const TILE_MAX = 3000;
 const SHELL = [
   './', './index.html', './app.js', './style.css', './manifest.json', './data/events.json',
@@ -49,16 +49,20 @@ async function trimTiles() {
   try { const c = await caches.open(TILE_CACHE), keys = await c.keys(); for (let i = 0; i < keys.length - TILE_MAX; i++) await c.delete(keys[i]); }
   finally { trimming = false; }
 }
+/* Tiles are fetched with CORS so the cached copy is a normal response of its real size. An opaque (no-cors) response
+   is never cached: browsers count each one as several MB against the storage quota, which can starve IndexedDB (the
+   data you are collecting). If CORS fails the tile is still shown, just not kept. (Found in Road Check 0.2.0.) */
 async function tile(req) {
-  const c = await caches.open(TILE_CACHE), hit = await c.match(req);
+  const c = await caches.open(TILE_CACHE), hit = await c.match(req.url);
   if (hit) return hit;
   try {
-    const res = await fetch(req);
-    if (res && (res.ok || res.type === 'opaque')) c.put(req, res.clone()).then(trimTiles);
+    const res = await fetch(req.url, { mode: 'cors', credentials: 'omit' });
+    if (res.ok && res.type !== 'opaque') c.put(req.url, res.clone()).then(trimTiles).catch(() => {});
     return res;
-  } catch (e) { return Response.error(); }
+  } catch (e) {
+    try { return await fetch(req); } catch (e2) { return Response.error(); }
+  }
 }
-
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;

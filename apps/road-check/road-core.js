@@ -14,7 +14,7 @@
  * Somdeep Kundu, RuDRA Lab, C-TARA, IIT Bombay · MIT License */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('../../skills/phone-field-sensors/assets/template/sensor-core.js'));
+    module.exports = factory(require('./lib/sensor-core.js'));
   } else root.RoadCore = factory(root.FieldSensors);
 })(typeof self !== 'undefined' ? self : this, function (F) {
   'use strict';
